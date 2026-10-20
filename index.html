@@ -1,0 +1,3128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Mega Auction</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+:root {
+  --gold:#FFB800; --gold-light:#FFD860; --dark:#0a0a0f;
+  --card-bg:#12121c; --surface:#1a1a2a; --border:rgba(255,184,0,0.2);
+  --text:#e8e8f0; --muted:#6a6a8a; --red:#ff4444; --green:#32dc96; --blue:#50a0ff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--dark);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(255,184,0,.06) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,80,0,.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;z-index:9999;background:var(--dark);display:flex;align-items:center;justify-content:center;}
+.login-box{background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:400px;text-align:center;}
+.login-logo{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:4px;background:linear-gradient(135deg,var(--gold-light),var(--gold),#ff6b00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
+.login-sub{font-size:11px;letter-spacing:4px;color:var(--muted);margin-bottom:32px;text-transform:uppercase;}
+.login-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:600;letter-spacing:1px;margin-bottom:12px;outline:none;transition:border-color .2s;}
+.login-input:focus{border-color:var(--gold);}
+.login-btn{width:100%;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:15px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;cursor:pointer;transition:opacity .2s;margin-top:4px;}
+.login-btn:hover{opacity:.9;}
+.login-err{color:var(--red);font-size:13px;margin-top:12px;letter-spacing:1px;min-height:20px;}
+
+/* HEADER */
+#app{display:none;}
+header{position:relative;z-index:10;text-align:center;padding:28px 24px 20px;border-bottom:1px solid var(--border);}
+.trophy-line{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:6px;color:var(--gold);opacity:.8;margin-bottom:6px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,6vw,64px);letter-spacing:4px;line-height:.9;background:linear-gradient(135deg,var(--gold-light) 0%,var(--gold) 40%,#ff6b00 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;}
+.subtitle{font-size:12px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;}
+.user-badge{position:absolute;top:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;padding:2px 5px;border-radius:4px;transition:color .2s;}
+.logout-btn:hover{color:var(--red);}
+
+/* TABS */
+.tabs{position:sticky;top:0;z-index:20;background:rgba(10,10,15,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:4px 12px 0;display:flex;flex-wrap:wrap;gap:2px;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:10px 14px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;white-space:nowrap;transition:all .25s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab .count{display:inline-block;margin-left:5px;background:var(--gold);color:var(--dark);font-size:9px;font-weight:700;padding:2px 5px;border-radius:20px;}
+.tab.auction-tab{color:var(--green);}
+.tab.auction-tab.active{color:var(--green);border-bottom-color:var(--green);}
+.tab.myteam-tab{color:var(--blue);}
+.tab.myteam-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.live-dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:5px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* CONTENT */
+.content{position:relative;z-index:1;padding:24px 20px;max-width:1400px;margin:0 auto;}
+.category-panel{display:none;}
+.category-panel.active{display:block;}
+
+/* PLAYER SET STYLES */
+.category-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
+.category-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.category-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;}
+.category-desc{font-size:12px;color:var(--muted);letter-spacing:1px;}
+.set-grid{display:grid;gap:14px;}
+.set-card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s,transform .2s;}
+.set-card:hover{border-color:rgba(255,184,0,.5);transform:translateY(-2px);}
+.set-header{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;cursor:pointer;user-select:none;}
+.set-title-group{display:flex;align-items:center;gap:10px;}
+.set-badge{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;padding:3px 10px;border-radius:4px;white-space:nowrap;}
+.set-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;}
+.set-count-badge{font-size:11px;font-weight:700;color:var(--muted);background:var(--surface);padding:3px 10px;border-radius:20px;}
+.chevron{transition:transform .3s;color:var(--muted);font-size:14px;}
+.set-card.open .chevron{transform:rotate(180deg);}
+.set-body{display:none;padding:0 18px 14px;border-top:1px solid var(--border);}
+.set-card.open .set-body{display:block;}
+.player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:7px;padding-top:12px;}
+.player-chip{display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--surface);border-radius:7px;border:1px solid rgba(255,255,255,.05);transition:background .15s,border-color .15s;}
+.player-chip:hover{background:rgba(255,184,0,.07);border-color:rgba(255,184,0,.2);}
+.player-chip.sold-out{opacity:.4;}
+.player-num{font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);min-width:16px;}
+.player-name{font-size:12px;font-weight:600;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.flag{font-size:12px;flex-shrink:0;margin-left:auto;}
+
+/* AUCTION PANEL */
+#auction-status-bar{background:var(--surface);border:1px solid rgba(50,220,150,.3);border-radius:12px;padding:11px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.status-indicator{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:9px;height:9px;border-radius:50%;}
+.status-dot.live{background:var(--green);animation:pulse 1.5s infinite;}
+.status-dot.paused{background:var(--gold);}
+.status-dot.idle{background:var(--muted);}
+
+/* TIMER */
+#timer-ring-wrap{display:flex;align-items:center;gap:14px;}
+#timer-svg{transform:rotate(-90deg);}
+#timer-circle{stroke-dasharray:220;stroke-dashoffset:0;transition:stroke-dashoffset .9s linear,stroke .5s;}
+#timer-num{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;min-width:44px;text-align:center;transition:color .3s;}
+
+/* CURRENT PLAYER CARD */
+#current-player-card{background:linear-gradient(135deg,rgba(255,184,0,.08),rgba(255,80,0,.05));border:2px solid var(--gold);border-radius:16px;padding:24px 28px;margin-bottom:16px;display:none;}
+#current-player-card.visible{display:block;}
+.auction-player-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,52px);letter-spacing:3px;color:var(--gold-light);}
+.auction-player-meta{font-size:13px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+.auction-price-row{display:flex;align-items:center;gap:20px;margin-top:16px;flex-wrap:wrap;}
+.price-box{text-align:center;}
+.price-label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.price-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold);line-height:1;}
+.price-val.big{font-size:46px;color:var(--green);}
+.leading-team{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;background:rgba(50,220,150,.15);color:var(--green);border:1px solid rgba(50,220,150,.3);padding:5px 12px;border-radius:6px;}
+.no-bid-tag{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;background:rgba(255,184,0,.1);color:var(--gold);border:1px solid rgba(255,184,0,.3);padding:5px 12px;border-radius:6px;}
+
+/* BID BUTTONS */
+.bid-section{margin-top:16px;}
+.bid-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.bid-btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;color:var(--gold);cursor:pointer;transition:all .2s;text-align:center;min-width:80px;}
+.bid-btn:hover:not(:disabled){background:var(--gold);color:var(--dark);border-color:var(--gold);}
+.bid-btn:disabled{opacity:.25;cursor:not-allowed;}
+.my-bid-tag{background:rgba(50,220,150,.15);border:1px solid rgba(50,220,150,.3);color:var(--green);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;letter-spacing:1px;display:inline-block;margin-top:7px;}
+.blocked-tag{background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;letter-spacing:1px;display:inline-block;margin-top:7px;}
+
+/* TEAMS OVERVIEW */
+#teams-overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:16px;}
+.team-purse-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.team-purse-name{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:3px;}
+.team-purse-val{font-family:'Orbitron',monospace;font-size:20px;color:var(--gold);}
+.team-purse-label{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:1px;}
+.purse-bar-wrap{background:rgba(255,255,255,.05);border-radius:4px;height:3px;margin-top:6px;overflow:hidden;}
+.purse-bar{background:var(--gold);height:100%;border-radius:4px;transition:width .4s;}
+.purse-bar.low{background:var(--red);}
+.team-stats-row{display:flex;gap:12px;margin-top:6px;font-size:11px;color:var(--muted);}
+.team-stat{display:flex;align-items:center;gap:3px;}
+
+/* LIVE BIDS */
+#live-bids-section{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:12px;color:var(--gold);}
+.bids-table{width:100%;border-collapse:collapse;}
+.bids-table th{font-size:10px;letter-spacing:2px;color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);}
+.bids-table td{padding:9px 10px;font-size:13px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.03);}
+.bids-table tr:last-child td{border-bottom:none;}
+.bids-table tr.leading td{background:rgba(50,220,150,.05);}
+.bid-amount{font-family:'Orbitron',monospace;font-size:12px;color:var(--gold);}
+.bid-amount.top{color:var(--green);}
+
+/* SOLD LOG */
+#sold-history{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.sold-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:10px;flex-wrap:wrap;}
+.sold-row:last-child{border-bottom:none;}
+.sold-player{font-weight:700;font-size:13px;}
+.sold-team-tag{background:rgba(50,220,150,.1);border:1px solid rgba(50,220,150,.2);color:var(--green);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;}
+.sold-price-tag{font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);}
+.unsold-tag{background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.2);color:var(--red);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+
+/* ADMIN PANEL */
+#admin-panel{background:var(--card-bg);border:2px solid rgba(255,184,0,.4);border-radius:16px;padding:22px;margin-bottom:16px;}
+.admin-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){.admin-grid{grid-template-columns:1fr;}}
+.admin-box{background:var(--surface);border-radius:10px;padding:16px;}
+.admin-box-title{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
+.admin-select,.admin-input{width:100%;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;margin-bottom:7px;}
+.admin-select:focus,.admin-input:focus{border-color:var(--gold);}
+.admin-btn{padding:9px 18px;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;cursor:pointer;transition:opacity .2s;margin-right:6px;margin-top:3px;}
+.admin-btn:hover{opacity:.85;}
+.btn-gold{background:var(--gold);color:var(--dark);}
+.btn-green{background:var(--green);color:var(--dark);}
+.btn-red{background:var(--red);color:#fff;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-gray{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+#manage-teams-section{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:14px;}
+.team-manage-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);flex-wrap:wrap;}
+.team-manage-row:last-child{border-bottom:none;}
+.team-id-badge{font-family:'Orbitron',monospace;font-size:10px;background:var(--surface);padding:4px 9px;border-radius:4px;color:var(--gold);white-space:nowrap;}
+.team-manage-input{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 11px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;width:130px;}
+.team-manage-input:focus{border-color:var(--gold);}
+.save-team-btn{background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:6px 13px;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;}
+.delete-team-btn{background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:6px;padding:6px 13px;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;}
+.delete-team-btn:hover{background:rgba(255,68,68,.3);}
+.add-team-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.add-team-row .team-manage-input{background:var(--card-bg);}
+
+/* MY TEAM PANEL */
+#panel-myteam .squad-header{background:linear-gradient(135deg,rgba(80,160,255,.1),rgba(80,160,255,.03));border:1px solid rgba(80,160,255,.3);border-radius:14px;padding:22px 26px;margin-bottom:20px;}
+.squad-team-name{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:4px;color:var(--blue);line-height:1;}
+.squad-stats{display:flex;gap:28px;margin-top:14px;flex-wrap:wrap;}
+.squad-stat{text-align:center;}
+.squad-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;}
+.squad-stat-label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.squad-progress{margin-top:16px;}
+.squad-progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;}
+.squad-progress-bar{background:rgba(255,255,255,.06);border-radius:6px;height:6px;overflow:hidden;}
+.squad-progress-fill{height:100%;border-radius:6px;transition:width .5s;}
+
+/* OTHER TEAMS VIEW */
+#other-teams-section{margin-top:24px;}
+.other-teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-top:14px;}
+.other-team-card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.other-team-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.other-team-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;}
+.other-team-meta{font-size:11px;color:var(--muted);display:flex;gap:12px;}
+.other-team-players{padding:12px 18px;}
+.squad-player-chip{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border-radius:7px;margin-bottom:5px;border:1px solid rgba(255,255,255,.04);}
+.squad-player-chip:last-child{margin-bottom:0;}
+.squad-player-no{font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);min-width:22px;}
+.squad-player-name{font-size:13px;font-weight:600;flex:1;}
+.squad-player-price{font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);}
+.foreign-badge{background:rgba(80,160,255,.15);color:var(--blue);border:1px solid rgba(80,160,255,.3);padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px;}
+.india-badge{background:rgba(255,184,0,.1);color:var(--gold);border:1px solid rgba(255,184,0,.2);padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px;}
+
+/* OVERLAYS */
+.toast{position:fixed;bottom:20px;right:20px;z-index:9998;background:var(--card-bg);border:1px solid var(--gold);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:700;letter-spacing:1px;animation:slideUp .3s ease;max-width:280px;}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.toast.green{border-color:var(--green);color:var(--green);}
+.toast.red{border-color:var(--red);color:var(--red);}
+#sold-overlay{display:none;position:fixed;inset:0;z-index:8888;background:rgba(0,0,0,.88);align-items:center;justify-content:center;text-align:center;}
+#sold-overlay.show{display:flex;}
+.sold-overlay-inner{animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+.sold-overlay-label{font-family:'Bebas Neue',sans-serif;font-size:100px;letter-spacing:8px;color:var(--gold);line-height:1;text-shadow:0 0 60px rgba(255,184,0,.5);}
+.sold-overlay-player{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--text);letter-spacing:3px;}
+.sold-overlay-team{font-family:'Orbitron',monospace;font-size:17px;color:var(--green);margin-top:8px;}
+.sold-overlay-price{font-family:'Orbitron',monospace;font-size:26px;color:var(--gold);margin-top:10px;}
+#unsold-overlay{display:none;position:fixed;inset:0;z-index:8888;background:rgba(0,0,0,.88);align-items:center;justify-content:center;text-align:center;}
+#unsold-overlay.show{display:flex;}
+
+/* TRADE PANEL */
+.tab.trade-tab{color:#ff9f50;}
+.tab.trade-tab.active{color:#ff9f50;border-bottom-color:#ff9f50;}
+#trade-closed-banner{background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:12px;padding:28px;text-align:center;margin-bottom:20px;}
+#trade-open-banner{background:rgba(255,159,80,.08);border:1px solid rgba(255,159,80,.4);border-radius:12px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.trade-status-dot{width:9px;height:9px;border-radius:50%;background:#ff9f50;animation:pulse 1.5s infinite;display:inline-block;margin-right:6px;}
+
+/* Trade proposal card */
+.trade-card{background:var(--card-bg);border:1px solid rgba(255,159,80,.25);border-radius:14px;padding:22px;margin-bottom:14px;}
+.trade-card-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#ff9f50;margin-bottom:16px;}
+.trade-select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;margin-bottom:10px;}
+.trade-select:focus{border-color:#ff9f50;}
+.trade-arrow{text-align:center;font-size:28px;margin:8px 0;color:#ff9f50;}
+.trade-player-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-top:8px;max-height:260px;overflow-y:auto;padding-right:4px;}
+.trade-player-opt{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:7px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;}
+.trade-player-opt:hover{border-color:rgba(255,159,80,.4);background:rgba(255,159,80,.06);}
+.trade-player-opt.selected{border-color:#ff9f50;background:rgba(255,159,80,.12);}
+.trade-player-opt .pname{font-size:12px;font-weight:600;flex:1;}
+.trade-btn{padding:10px 22px;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;cursor:pointer;transition:opacity .2s;margin-right:8px;margin-top:6px;}
+.trade-btn:hover{opacity:.85;}
+.btn-orange{background:#ff9f50;color:var(--dark);}
+
+/* Incoming trade request */
+.trade-request-card{background:linear-gradient(135deg,rgba(255,159,80,.1),rgba(255,80,0,.05));border:2px solid #ff9f50;border-radius:14px;padding:20px;margin-bottom:14px;animation:glowPulse 2s infinite;}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 rgba(255,159,80,0);}50%{box-shadow:0 0 16px rgba(255,159,80,.25);}}
+.trade-request-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:#ff9f50;margin-bottom:12px;}
+.trade-player-tag{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-size:13px;font-weight:700;margin:3px;}
+.trade-log-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);flex-wrap:wrap;font-size:13px;}
+.trade-log-row:last-child{border-bottom:none;}
+.completed-tag{background:rgba(50,220,150,.1);border:1px solid rgba(50,220,150,.2);color:var(--green);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.rejected-tag{background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.2);color:var(--red);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.pending-tag{background:rgba(255,159,80,.1);border:1px solid rgba(255,159,80,.3);color:#ff9f50;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+
+/* Admin trade controls */
+#admin-trade-box{background:var(--card-bg);border:2px solid rgba(255,184,0,.4);border-radius:14px;padding:20px;margin-bottom:16px;}
+
+/* LIVE / OFFLINE BANNER */
+#auction-live-banner{position:relative;z-index:5;text-align:center;padding:10px 20px;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;font-weight:700;transition:all .3s;}
+#auction-live-banner.banner-live{background:linear-gradient(90deg,rgba(50,220,150,.12),rgba(50,220,150,.06));border-bottom:1px solid rgba(50,220,150,.3);color:var(--green);}
+#auction-live-banner.banner-offline{background:linear-gradient(90deg,rgba(255,68,68,.1),rgba(255,68,68,.05));border-bottom:1px solid rgba(255,68,68,.25);color:var(--red);}
+#auction-live-banner.banner-live .blive-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s infinite;margin-right:8px;vertical-align:middle;}
+#auction-live-banner.banner-offline .blive-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:8px;vertical-align:middle;}
+.admin-live-toggle{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:12px 16px;border-radius:10px;border:2px solid rgba(50,220,150,.3);background:rgba(50,220,150,.05);}
+.admin-live-toggle.offline{border-color:rgba(255,68,68,.3);background:rgba(255,68,68,.05);}
+.live-toggle-btn{padding:9px 22px;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.live-toggle-btn.go-live{background:var(--green);color:var(--dark);}
+.live-toggle-btn.go-offline{background:var(--red);color:#fff;}
+
+/* CONSOLE PANEL */
+.tab.console-tab{color:#c084fc;}
+.tab.console-tab.active{color:#c084fc;border-bottom-color:#c084fc;}
+#console-log-list{max-height:500px;overflow-y:auto;padding-right:4px;}
+.console-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:flex-start;}
+.console-row:last-child{border-bottom:none;}
+.console-time{font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);white-space:nowrap;padding-top:2px;min-width:64px;}
+.console-icon{font-size:14px;flex-shrink:0;}
+.console-msg{font-size:13px;font-weight:600;flex:1;}
+.console-tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:6px;}
+.tag-remove{background:rgba(255,68,68,.15);color:var(--red);border:1px solid rgba(255,68,68,.3);}
+.tag-wallet{background:rgba(255,184,0,.12);color:var(--gold);border:1px solid rgba(255,184,0,.25);}
+.tag-sold{background:rgba(50,220,150,.12);color:var(--green);border:1px solid rgba(50,220,150,.25);}
+.tag-trade{background:rgba(255,159,80,.12);color:#ff9f50;border:1px solid rgba(255,159,80,.25);}
+.tag-system{background:rgba(80,160,255,.12);color:var(--blue);border:1px solid rgba(80,160,255,.25);}
+.tag-bid{background:rgba(255,159,80,.12);color:#ff9f50;border:1px solid rgba(255,159,80,.25);}
+
+/* ADMIN SQUAD MANAGER */
+.admin-squad-team{background:var(--surface);border-radius:10px;padding:14px;margin-bottom:10px;}
+.admin-squad-team-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;}
+.admin-player-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.admin-player-row:last-child{border-bottom:none;}
+.admin-remove-btn{background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:5px;padding:3px 9px;font-family:'Bebas Neue',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;}
+.admin-remove-btn:hover{background:rgba(255,68,68,.3);}
+.wallet-adj-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.wallet-adj-input{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;width:90px;}
+.wallet-adj-input:focus{border-color:var(--gold);}
+.wallet-add-btn{background:rgba(50,220,150,.15);border:1px solid rgba(50,220,150,.3);color:var(--green);border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;}
+.wallet-add-btn:hover{background:rgba(50,220,150,.3);}
+.wallet-sub-btn{background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.25);color:var(--red);border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;}
+.wallet-sub-btn:hover{background:rgba(255,68,68,.25);}
+.wallet-set-btn{background:rgba(255,184,0,.15);border:1px solid rgba(255,184,0,.3);color:var(--gold);border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;}
+.wallet-set-btn:hover{background:rgba(255,184,0,.3);}
+
+/* END SEASON */
+#end-season-banner{position:relative;z-index:5;text-align:center;padding:14px 20px;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:3px;font-weight:700;background:linear-gradient(90deg,rgba(255,68,68,.15),rgba(255,80,0,.1));border-bottom:2px solid rgba(255,68,68,.5);color:var(--red);display:none;}
+#end-season-banner.active{display:block;}
+.season-ended-watermark{pointer-events:none;position:fixed;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;opacity:.03;transform:rotate(-30deg);font-family:'Bebas Neue',sans-serif;font-size:clamp(80px,15vw,180px);letter-spacing:10px;color:var(--red);user-select:none;}
+.end-season-btn{background:linear-gradient(135deg,#7f0000,#c0392b);color:#fff;border:2px solid rgba(255,68,68,.6);border-radius:8px;padding:9px 18px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;cursor:pointer;transition:opacity .2s;margin-right:6px;margin-top:3px;box-shadow:0 0 16px rgba(255,68,68,.2);}
+.end-season-btn:hover{opacity:.85;}
+#end-season-modal{display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.92);align-items:center;justify-content:center;}
+
+@media(max-width:600px){
+  .player-grid{grid-template-columns:1fr 1fr;}
+  .tab{padding:8px 10px;font-size:10px;letter-spacing:1px;}
+  h1{font-size:36px;}
+  .auction-player-name{font-size:28px;}
+  .user-badge{top:8px;right:8px;padding:5px 9px;font-size:11px;}
+  #timer-num{font-size:22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">IPL<br>MEGA AUCTION</div>
+    <div class="login-sub">Live Bidding Platform</div>
+    <input class="login-input" id="login-id" type="text" placeholder="Team ID / admin" autocomplete="off"/>
+    <input class="login-input" id="login-pass" type="password" placeholder="Password"/>
+    <button class="login-btn" onclick="doLogin()">ENTER AUCTION ROOM</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- SOLD OVERLAY -->
+<div id="sold-overlay">
+  <div class="sold-overlay-inner">
+    <div class="sold-overlay-label">SOLD!</div>
+    <div class="sold-overlay-player" id="so-player"></div>
+    <div class="sold-overlay-team" id="so-team"></div>
+    <div class="sold-overlay-price" id="so-price"></div>
+  </div>
+</div>
+
+<!-- UNSOLD OVERLAY -->
+<div id="unsold-overlay">
+  <div style="animation:popIn .4s cubic-bezier(.34,1.56,.64,1)">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:90px;letter-spacing:8px;color:var(--red);line-height:1;text-shadow:0 0 60px rgba(255,68,68,.4);">UNSOLD</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:var(--muted);letter-spacing:3px;" id="uo-player"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="trophy-line">🏆 IPL MEGA AUCTION — LIVE PLATFORM</div>
+    <h1>IPL MEGA<br>AUCTION</h1>
+    <div class="subtitle" id="header-subtitle">Real-Time Bidding · Teams · Purse</div>
+    <div class="user-badge">
+      <span id="header-user">—</span>
+      <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab auction-tab active" data-tab="auction" onclick="showTab('auction')"><span class="live-dot"></span>LIVE AUCTION</button>
+    <button class="tab myteam-tab" data-tab="myteam" onclick="showTab('myteam')" id="myteam-tab-btn">🏏 MY TEAM</button>
+    <button class="tab" data-tab="allsquads" onclick="showTab('allsquads')" id="allsquads-tab-btn" style="display:none;color:#a050ff;">👁 ALL SQUADS</button>
+    <button class="tab trade-tab" data-tab="trade" onclick="showTab('trade')" id="trade-tab-btn">🔄 TRADES</button>
+    <button class="tab" style="color:#ff9f50;" data-tab="trade-history" onclick="showTab('trade-history')" id="trade-history-tab-btn">📜 TRADE HISTORY</button>
+    <button class="tab" style="color:#32dc96;" data-tab="sold-players" onclick="showTab('sold-players')" id="sold-players-tab-btn">✅ SOLD <span class="count" id="c-sold-players" style="background:#32dc96;">0</span></button>
+    <button class="tab" style="color:#ff6b6b;" data-tab="unsold" onclick="showTab('unsold')" id="unsold-tab-btn">🔴 UNSOLD <span class="count" id="c-unsold" style="background:#ff6b6b;">0</span></button>
+    <button class="tab" style="color:#ff9f50;" data-tab="injured" onclick="showTab('injured')" id="injured-tab-btn">🚑 INJURED <span class="count" id="c-injured" style="background:#ff9f50;">0</span></button>
+    <button class="tab" style="color:#ffd860;" data-tab="sold-log" onclick="showTab('sold-log')" id="sold-log-tab-btn">🏅 SOLD LOG</button>
+    <button class="tab console-tab" data-tab="console" onclick="showTab('console')" id="console-tab-btn">📋 CONSOLE</button>
+    <button class="tab" data-tab="pace" onclick="showTab('pace')">🔥 PACE <span class="count" id="c-pace"></span></button>
+    <button class="tab" data-tab="spin" onclick="showTab('spin')">🌀 SPIN <span class="count" id="c-spin"></span></button>
+    <button class="tab" data-tab="bat" onclick="showTab('bat')">🏏 BAT <span class="count" id="c-bat"></span></button>
+    <button class="tab" data-tab="wk" onclick="showTab('wk')">🧤 WK <span class="count" id="c-wk"></span></button>
+    <button class="tab" data-tab="ar" onclick="showTab('ar')">⚡ AR <span class="count" id="c-ar"></span></button>
+  </nav>
+
+  <!-- LIVE / OFFLINE BANNER (visible to all) -->
+  <div id="auction-live-banner" class="banner-offline">
+    <span class="blive-dot"></span><span id="banner-text">AUCTION OFFLINE</span>
+  </div>
+
+  <!-- END SEASON BANNER (shown permanently once season ended) -->
+  <div id="end-season-banner">
+    🏁 &nbsp; SEASON ENDED — READ-ONLY MODE &nbsp; · &nbsp; All bidding, trading and admin controls are permanently disabled &nbsp; 🏁
+  </div>
+  <div class="season-ended-watermark" id="season-watermark" style="display:none;">SEASON ENDED</div>
+
+  <div class="content">
+
+    <!-- AUCTION PANEL -->
+    <div id="panel-auction" class="category-panel active">
+
+      <!-- ADMIN PANEL -->
+      <div id="admin-panel" style="display:none;">
+        <div class="admin-title">⚙️ ADMIN CONTROL ROOM</div>
+        <div class="admin-grid">
+          <div class="admin-live-toggle offline" id="admin-live-toggle-box">
+          <div style="flex:1;">
+            <div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:3px;">AUCTION STATUS</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;" id="admin-live-status-label">● OFFLINE</div>
+          </div>
+          <button class="live-toggle-btn go-live" id="admin-live-btn" onclick="adminToggleLive()">🟢 GO LIVE</button>
+        </div>
+        <div class="admin-box">
+            <div class="admin-box-title">Announce Player</div>
+            <select class="admin-select" id="admin-cat-select" onchange="populateAdminPlayers()">
+              <option value="">— Select Category —</option>
+              <option value="pace">🔥 Pace Bowlers</option>
+              <option value="spin">🌀 Spinners</option>
+              <option value="bat">🏏 Batters</option>
+              <option value="wk">🧤 Wicketkeepers</option>
+              <option value="ar">⚡ All-Rounders</option>
+              <option value="unsold_pool" id="unsold-pool-option" style="color:#ff6b6b;">🔴 Unsold Players</option>
+            </select>
+            <select class="admin-select" id="admin-player-select"></select>
+            <input class="admin-input" id="admin-base-price" type="number" step="0.05" placeholder="Base price (e.g. 0.6)"/>
+            <button class="admin-btn btn-gold" onclick="adminAnnounce()">🎤 ANNOUNCE PLAYER</button>
+          </div>
+          <div class="admin-box">
+            <div class="admin-box-title">Auction Controls</div>
+            <button class="admin-btn btn-green" id="sell-btn" onclick="adminSell()">✅ SELL — Accept Highest Bid</button>
+            <button class="admin-btn btn-red" onclick="adminUnsold()">❌ MARK UNSOLD</button>
+            <button class="admin-btn btn-blue" id="pause-btn" onclick="adminTogglePause()">⏸ PAUSE</button>
+            <button class="admin-btn btn-gray" onclick="adminReset()">🔄 RESET BIDS</button>
+            <button class="admin-btn" style="background:rgba(80,160,255,.15);border:1px solid rgba(80,160,255,.3);color:var(--blue);" onclick="adminForceSync()">🔃 FORCE SYNC</button>
+            <button class="admin-btn" style="background:rgba(50,220,150,.1);border:1px solid rgba(50,220,150,.3);color:var(--green);" onclick="adminRepairSquads()">🔧 REPAIR SQUADS</button>
+            <button class="admin-btn" style="background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.4);color:var(--red);margin-top:8px;" onclick="adminFullReset()">⚠️ FULL SYSTEM RESET</button>
+            <hr style="border:none;border-top:1px solid rgba(255,68,68,.2);margin:12px 0;">
+            <button class="end-season-btn" onclick="adminEndSeasonPrompt()">🏁 END SEASON</button>
+            <div style="font-size:10px;color:var(--muted);margin-top:5px;letter-spacing:.5px;">Locks everything permanently — all users become read-only. Cannot be undone.</div>
+          </div>
+        </div>
+        </div>
+        <div id="admin-trade-box" style="display:none;">
+          <div class="admin-title" style="font-size:20px;margin-bottom:14px;">🔄 TRADE WINDOW CONTROL</div>
+          <div class="admin-box" style="background:var(--surface);border-radius:10px;padding:16px;">
+            <div class="admin-box-title">Trade window is currently: <span id="trade-window-status-label" style="color:var(--red);">CLOSED</span></div>
+            <button class="admin-btn btn-orange" id="trade-toggle-btn" onclick="adminToggleTrade()">🔓 OPEN TRADE WINDOW</button>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:1px;">When open, teams can send trade proposals to each other.</div>
+          </div>
+          <div id="admin-pending-trades" style="margin-top:14px;"></div>
+        </div>
+        <div id="manage-teams-section" style="display:none;">
+          <div class="section-title" style="font-size:17px;margin-bottom:14px;">👥 MANAGE TEAMS</div>
+
+          <!-- DEFAULT PURSE SETTING -->
+          <div class="admin-box" style="margin-bottom:14px;">
+            <div class="admin-box-title">💰 Default Purse — pre-filled for every newly created team</div>
+            <div class="add-team-row">
+              <input class="team-manage-input" id="default-purse-input" type="number" step="0.5" min="0" placeholder="e.g. 40" style="width:150px;background:var(--card-bg);"/>
+              <button class="admin-btn btn-gold" style="margin:0;" onclick="adminSaveDefaultPurse()">💾 SAVE DEFAULT</button>
+              <span style="font-size:11px;color:var(--muted);letter-spacing:1px;">Current default: <span id="default-purse-current" style="color:var(--gold);font-family:'Orbitron',monospace;">₹40.00</span> · existing teams are not changed</span>
+            </div>
+          </div>
+
+          <!-- ADD NEW TEAM -->
+          <div class="admin-box" style="margin-bottom:14px;">
+            <div class="admin-box-title">➕ Add New Team</div>
+            <div class="add-team-row">
+              <input class="team-manage-input" id="new-team-id" type="text" placeholder="Team ID (login)" autocomplete="off"/>
+              <input class="team-manage-input" id="new-team-name" type="text" placeholder="Team Name" autocomplete="off"/>
+              <input class="team-manage-input" id="new-team-pass" type="text" placeholder="Password" autocomplete="off"/>
+              <input class="team-manage-input" id="new-team-purse" type="number" step="0.5" min="0" placeholder="Purse (default)" style="width:140px;"/>
+              <button class="admin-btn btn-green" style="margin:0;" onclick="adminAddTeam()">➕ ADD TEAM</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:.5px;">Leave Team ID blank to auto-generate (team6, team7…). Leave Purse blank to use the default purse. Team ID may use letters, numbers, - and _ only.</div>
+          </div>
+
+          <div id="team-manage-list"></div>
+        </div>
+        <div id="squad-manager-section" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:14px;">
+          <div class="section-title" style="font-size:17px;margin-bottom:6px;">🗂 SQUAD MANAGER <span style="font-size:11px;color:var(--muted);letter-spacing:1px;">(Admin only — remove players & adjust wallets)</span></div>
+          <div id="squad-manager-list"></div>
+        </div>
+      </div>
+
+      <!-- STATUS BAR + TIMER -->
+      <div id="auction-status-bar">
+        <div class="status-indicator">
+          <div class="status-dot idle" id="status-dot"></div>
+          <span id="status-text" style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;">WAITING TO START</span>
+        </div>
+        <div id="timer-ring-wrap" style="display:none;align-items:center;gap:10px;">
+          <svg id="timer-svg" width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/>
+            <circle id="timer-circle" cx="22" cy="22" r="18" fill="none" stroke="var(--green)" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="0"/>
+          </svg>
+          <span id="timer-num" style="color:var(--green);font-family:'Orbitron',monospace;font-size:28px;font-weight:900;">90</span>
+          <span style="font-size:10px;letter-spacing:2px;color:var(--muted);">SEC</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;">SOLD: <span id="sold-count" style="color:var(--gold);font-weight:700;">0</span></div>
+      </div>
+
+      <!-- TEAMS OVERVIEW -->
+      <div id="teams-overview"></div>
+
+      <!-- CURRENT PLAYER -->
+      <div id="current-player-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:10px;letter-spacing:3px;color:var(--muted);margin-bottom:4px;">NOW ON AUCTION</div>
+            <div class="auction-player-name" id="auc-player-name">—</div>
+            <div class="auction-player-meta" id="auc-player-meta">—</div>
+          </div>
+          <div id="auc-flag" style="font-size:48px;"></div>
+        </div>
+        <div class="auction-price-row">
+          <div class="price-box">
+            <div class="price-label">Base Price</div>
+            <div class="price-val" id="auc-base-price">₹—</div>
+          </div>
+          <div class="price-box">
+            <div class="price-label">Current Bid</div>
+            <div class="price-val big" id="auc-current-bid">₹—</div>
+          </div>
+          <div id="auc-leading-tag"><span class="no-bid-tag">NO BID YET</span></div>
+        </div>
+        <div class="bid-section" id="bid-section" style="display:none;">
+          <div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;">YOUR WALLET: <span id="my-wallet" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:13px;">₹—</span>
+          &nbsp;·&nbsp; SQUAD: <span id="my-squad-count" style="color:var(--blue);font-family:'Orbitron',monospace;font-size:12px;">0/25</span>
+          &nbsp;·&nbsp; FOREIGN: <span id="my-foreign-count" style="color:var(--blue);font-family:'Orbitron',monospace;font-size:12px;">0/8</span>
+          </div>
+          <div class="bid-buttons" id="bid-buttons"></div>
+          <div id="my-bid-display"></div>
+          <div id="bid-block-reason"></div>
+        </div>
+      </div>
+
+      <!-- LIVE BIDS TABLE -->
+      <div id="live-bids-section">
+        <div class="section-title">📊 LIVE BIDS — ALL TEAMS</div>
+        <table class="bids-table">
+          <thead><tr>
+            <th>TEAM</th><th>CURRENT BID</th><th>WALLET</th><th>SQUAD</th><th>FOREIGN</th>
+          </tr></thead>
+          <tbody id="live-bids-body"></tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <!-- MY TEAM PANEL -->
+    <div id="panel-myteam" class="category-panel">
+      <div id="myteam-content"></div>
+    </div>
+
+    <!-- PLAYER CATEGORY PANELS -->
+    <div id="panel-pace" class="category-panel"></div>
+    <div id="panel-spin" class="category-panel"></div>
+    <div id="panel-bat" class="category-panel"></div>
+    <div id="panel-wk" class="category-panel"></div>
+    <div id="panel-ar" class="category-panel"></div>
+    <!-- UNSOLD PANEL -->
+    <div id="panel-injured" class="category-panel"></div>
+    <div id="panel-unsold" class="category-panel"></div>
+    <!-- SOLD PLAYERS PANEL -->
+    <div id="panel-sold-players" class="category-panel"></div>
+    <div id="panel-sold-log" class="category-panel"><div id="sold-history" style="padding:4px 0;"><div class="section-title">🏅 SOLD PLAYERS LOG</div><div id="sold-list"><div style="color:var(--muted);font-size:13px;letter-spacing:1px;">No players sold yet</div></div></div></div>
+    <!-- ALL SQUADS PANEL (admin only) -->
+    <div id="panel-allsquads" class="category-panel"></div>
+    <!-- CONSOLE PANEL -->
+    <div id="panel-console" class="category-panel">
+      <div id="console-content"></div>
+    </div>
+    <!-- TRADE PANEL -->
+    <div id="panel-trade-history" class="category-panel"></div>
+    <div id="panel-trade" class="category-panel">
+      <div id="trade-content"></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- INJURED / RE-AUCTION MODAL -->
+<div id="remove-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);align-items:center;justify-content:center;">
+  <div style="background:#12121c;border:1px solid rgba(255,159,80,.4);border-radius:18px;padding:32px;max-width:420px;width:90%;text-align:center;">
+    <div style="font-size:32px;margin-bottom:10px;">🚑</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;" id="remove-modal-title">REMOVE PLAYER</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px;" id="remove-modal-sub">Choose what happens to this player</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="confirmRemove('injured')" style="background:rgba(255,159,80,.15);border:1px solid rgba(255,159,80,.4);color:#ff9f50;border-radius:10px;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">🚑 MARK AS INJURED<br><span style="font-size:11px;font-family:'Rajdhani',sans-serif;letter-spacing:1px;opacity:.7;">Remove from squad, goes to Injured tab, not available for auction</span></button>
+      <button onclick="confirmRemove('reauction')" style="background:rgba(50,220,150,.1);border:1px solid rgba(50,220,150,.3);color:var(--green);border-radius:10px;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">🔄 RELEASE FOR RE-AUCTION<br><span style="font-size:11px;font-family:'Rajdhani',sans-serif;letter-spacing:1px;opacity:.7;">Remove from squad, player goes back to their category for bidding</span></button>
+      <button onclick="closeRemoveModal()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);border-radius:10px;padding:11px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;cursor:pointer;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- END SEASON CONFIRM MODAL -->
+<div id="end-season-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.95);align-items:center;justify-content:center;">
+  <div style="background:var(--card-bg);border:2px solid var(--red);border-radius:18px;padding:36px 32px;max-width:460px;width:90%;text-align:center;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);">
+    <div style="font-size:56px;margin-bottom:8px;">🏁</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:3px;color:var(--red);margin-bottom:10px;">END THE SEASON</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:18px;">This will <strong style="color:var(--text);">permanently lock</strong> the entire platform into read-only mode:</div>
+    <div style="background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.25);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left;font-size:13px;line-height:2;">
+      🔒 All team owners lose bidding ability<br>
+      🔒 All trade proposals are disabled<br>
+      🔒 Admin controls are permanently hidden<br>
+      🔒 No one can modify any data<br>
+      📖 Everyone can still view squads &amp; results
+    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px;letter-spacing:1px;">⚠️ THIS CANNOT BE REVERSED.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;letter-spacing:.5px;">Type <strong style="color:var(--text);">END SEASON</strong> below to confirm:</div>
+    <input id="end-season-confirm-input" type="text" placeholder="Type END SEASON" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;outline:none;text-align:center;margin-bottom:16px;"/>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button id="end-season-confirm-btn" onclick="confirmEndSeason()" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:13px 28px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;opacity:.4;transition:opacity .2s;" disabled>🏁 END SEASON</button>
+      <button onclick="document.getElementById('end-season-modal').style.display='none'" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:13px 24px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULL RESET CONFIRM MODAL -->
+<div id="reset-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+  <div style="background:var(--card-bg);border:2px solid var(--red);border-radius:18px;padding:36px 32px;max-width:420px;width:90%;text-align:center;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);">
+    <div style="font-size:52px;margin-bottom:8px;">⚠️</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--red);margin-bottom:10px;">FULL SYSTEM RESET</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:8px;">This will permanently erase:</div>
+    <div style="background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left;font-size:13px;line-height:1.9;">
+      🗑 All player bids &amp; auction history<br>
+      🗑 All squad rosters for every team<br>
+      🗑 All wallet balances → reset to the default purse (₹<span id="reset-purse-val">40</span>)<br>
+      🗑 All sold &amp; unsold records<br>
+      🗑 All trade history<br>
+      🗑 Entire console log
+    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:24px;letter-spacing:1px;">THIS CANNOT BE UNDONE.</div>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="confirmFullReset()" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:13px 30px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">YES, RESET EVERYTHING</button>
+      <button onclick="document.getElementById('reset-modal').style.display='none'" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:13px 30px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERIC CONFIRM MODAL -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+  <div style="background:var(--card-bg);border:2px solid var(--red);border-radius:18px;padding:32px 28px;max-width:420px;width:90%;text-align:center;">
+    <div id="confirm-title" style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;color:var(--red);margin-bottom:10px;">CONFIRM</div>
+    <div id="confirm-msg" style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:22px;"></div>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button id="confirm-yes" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:12px 26px;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer;">YES</button>
+      <button id="confirm-no" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px 26px;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════ FIREBASE CONFIG ═══════════════════════
+// Config of the new Firebase project (ipl-auction-2027-59f20).
+// If apiKey is ever set back to "YOUR_API_KEY" the app runs in local DEMO mode (no database).
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDPn8ZVOYIESisCk9f4CmJ8tj_KFz0_Yd0",
+  authDomain: "ipl-auction-2027-59f20.firebaseapp.com",
+  // Realtime Database URL — must match the URL shown in Firebase Console → Build → Realtime Database.
+  // If your database is in another region it looks like https://ipl-auction-2027-59f20-default-rtdb.<region>.firebasedatabase.app
+  databaseURL: "https://ipl-auction-2027-59f20-default-rtdb.firebaseio.com",
+  projectId: "ipl-auction-2027-59f20",
+  storageBucket: "ipl-auction-2027-59f20.firebasestorage.app",
+  messagingSenderId: "495273240319",
+  appId: "1:495273240319:web:dd79119556bf883c470eca",
+  measurementId: "G-F0RVKPN8LZ"
+};
+
+// ═══════════════════════ CONSTANTS ═══════════════════════
+const MAX_SQUAD = 25, MIN_SQUAD = 18, MAX_FOREIGN = 8, TIMER_SECS = 90;
+// TOTAL_PURSE is the admin-configurable DEFAULT purse for newly created teams.
+// It is stored in Firebase at /settings/defaultPurse and kept in sync for everyone.
+let TOTAL_PURSE = 40;
+const ADMIN_CREDS = { id:"admin", pass:"ipl@admin2025" };
+// No built-in teams: the admin creates every team from the Manage Teams section.
+const DEFAULT_TEAMS = {};
+
+// ═══════════════════════ STATE ═══════════════════════
+let db=null, currentUser=null, isAdmin=false;
+let teamsData={}, auctionState={status:'idle',currentPlayer:null,basePrice:0,bids:{},soldLog:[],timerEnd:null};
+let listeners=[], timerInterval=null, localTimerRunning=false;
+let sellInProgress=false; // lock to prevent double-sell
+let injuredPlayers=[]; // list of {name, team, price, role} objects
+let pendingRemove={teamId:null,playerName:null,source:null}; // for remove modal
+const DEMO = ()=>FIREBASE_CONFIG.apiKey==='YOUR_API_KEY';
+
+// Starting purse of a team (used for purse bars / "spent" amounts). Falls back to the default purse.
+function teamStart(team){ return (team && team.startPurse>0) ? team.startPurse : TOTAL_PURSE; }
+function pursePct(team){ const purse=team.purse??TOTAL_PURSE; return Math.max(0,Math.min(100,(purse/teamStart(team))*100)); }
+
+// ═══════════════════════ FIREBASE ═══════════════════════
+function initFirebase(){
+  try{ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); db=firebase.database(); return true; }
+  catch(e){ console.error(e); return false; }
+}
+
+// ═══════════════════════ LOGIN ═══════════════════════
+document.getElementById('login-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('login-id').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('login-pass').focus(); });
+
+async function doLogin(){
+  const id=document.getElementById('login-id').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value.trim();
+  const err=document.getElementById('login-err');
+  err.textContent='';
+  if(!id||!pass){err.textContent='Please enter ID and password.';return;}
+  if(id===ADMIN_CREDS.id&&pass===ADMIN_CREDS.pass){currentUser='admin';isAdmin=true;if(!DEMO()&&!db){if(!initFirebase()){err.textContent='Database connection failed.';currentUser=null;isAdmin=false;return;}}launchApp();return;}
+  if(DEMO()){
+    if(DEFAULT_TEAMS[id]&&DEFAULT_TEAMS[id].pass===pass){currentUser=id;isAdmin=false;launchApp();return;}
+    err.textContent='Invalid credentials.';return;
+  }
+  if(!initFirebase()){err.textContent='Database connection failed.';return;}
+  try{
+    // Team IDs are sanitised on creation, but guard against characters Firebase rejects in paths
+    if(/[.#$\[\]\/]/.test(id)){err.textContent='Team ID not found.';return;}
+    const snap=await db.ref(`/teams/${id}`).get();
+    if(snap.exists()&&snap.val().pass===pass){currentUser=id;isAdmin=false;launchApp();}
+    else err.textContent=snap.exists()?'Incorrect password.':'Team ID not found.';
+  }catch(e){err.textContent='Connection error. Try again.';}
+}
+
+function doLogout(){
+  stopTimer();
+  listeners.forEach(fn=>fn()); listeners=[];
+  currentUser=null; isAdmin=false; sellInProgress=false;
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('admin-trade-box').style.display='none';
+  document.getElementById('reset-modal').style.display='none';
+  document.getElementById('remove-modal').style.display='none';
+  document.getElementById('manage-teams-section').style.display='none';
+  document.getElementById('allsquads-tab-btn').style.display='none';
+  document.getElementById('squad-manager-section') && (document.getElementById('squad-manager-section').style.display='none');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pass').value='';
+}
+
+// ═══════════════════════ LAUNCH ═══════════════════════
+function launchApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  Object.keys(PLAYER_DATA).forEach(renderCategoryPanel);
+  if(DEMO()){
+    teamsData=JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    auctionState={status:'idle',currentPlayer:null,basePrice:0,bids:{},soldLog:[],timerEnd:null};
+    tradesData={}; tradeWindowOpen=false; auctionLive=false;
+    // consoleLogs intentionally NOT reset — persists for the full session
+  } else {
+    if(!db && !initFirebase()){toast('Database connection failed','red');return;}
+    setupFirebaseListeners();
+    setupTradeListener();
+    setupConsoleListener();
+    if(isAdmin) initTeamsInFirebase();
+  }
+  if(isAdmin){
+    document.getElementById('admin-panel').style.display='block';
+    document.getElementById('admin-trade-box').style.display='block';
+    document.getElementById('myteam-tab-btn').style.display='none';
+    document.getElementById('trade-tab-btn').style.display='none';
+  } else {
+    document.getElementById('myteam-tab-btn').style.display='';
+    document.getElementById('trade-tab-btn').style.display='';
+  }
+  if(isAdmin){
+    document.getElementById('squad-manager-section').style.display='block';
+    document.getElementById('manage-teams-section').style.display='block';
+    document.getElementById('allsquads-tab-btn').style.display='';
+    renderManageTeams();
+    renderSquadManager();
+  }
+  updateHeaderUser();
+  refreshAll();
+  // If season was already ended (persisted in Firebase), lock immediately
+  if(auctionState.seasonEnded) applySeasonEndedUI();
+}
+
+function updateHeaderUser(){
+  const label=isAdmin?'👑 ADMIN':(teamsData[currentUser]?.name||currentUser?.toUpperCase()||'—');
+  document.getElementById('header-user').textContent=label;
+}
+
+// Header subtitle shows live team count + default purse
+function updateSubtitle(){
+  const el=document.getElementById('header-subtitle');
+  if(!el) return;
+  const n=Object.keys(teamsData).length;
+  el.textContent=`Real-Time Bidding · ${n} Team${n!==1?'s':''} · ₹${(+TOTAL_PURSE).toFixed(2).replace(/\.00$/,'')} Purse`;
+}
+
+// Keep the default-purse inputs / labels in sync with TOTAL_PURSE
+function syncPurseSettingUI(){
+  const cur=document.getElementById('default-purse-current');
+  if(cur) cur.textContent='₹'+(+TOTAL_PURSE).toFixed(2);
+  const inp=document.getElementById('default-purse-input');
+  if(inp && document.activeElement!==inp) inp.value=TOTAL_PURSE;
+  const np=document.getElementById('new-team-purse');
+  if(np) np.placeholder='Purse (default ₹'+TOTAL_PURSE+')';
+  const rp=document.getElementById('reset-purse-val');
+  if(rp) rp.textContent=TOTAL_PURSE;
+}
+
+function refreshAll(){
+  renderTeamsOverview();
+  renderBidsTable();
+  renderCurrentPlayer();
+  renderSoldLog();
+  updateStatusBar();
+  renderMyTeam();
+  renderTradePanel();
+  updateAdminTradePanel();
+  if(isAdmin) renderSquadManager();
+  renderConsoleLogs();
+  updateLiveBanner();
+  updateAdminLiveToggle();
+  renderUnsoldPanel();
+  renderSoldPlayersPanel();
+  Object.keys(PLAYER_DATA).forEach(renderCategoryPanel);
+  updateUnsoldPoolOption();
+  if(isAdmin) renderAllSquadsPanel();
+  renderInjuredPanel();
+  updateSubtitle();
+  syncPurseSettingUI();
+  document.getElementById('c-injured').textContent=injuredPlayers.length||'';
+  document.getElementById('sold-count').textContent=(auctionState.soldLog||[]).filter(s=>s.sold).length;
+  // If season is ended, re-apply locked UI every refresh
+  if(auctionState.seasonEnded && !seasonEnded) applySeasonEndedUI();
+  else if(seasonEnded) applySeasonEndedUI();
+}
+
+// ═══════════════════════ FIREBASE LISTENERS ═══════════════════════
+function setupFirebaseListeners(){
+  // Default purse setting listener
+  const sRef=db.ref('/settings/defaultPurse');
+  const sOff=sRef.on('value',snap=>{
+    const v=snap.val();
+    if(typeof v==='number' && v>0) TOTAL_PURSE=v;
+    syncPurseSettingUI();
+    updateSubtitle();
+    renderTeamsOverview();
+    renderBidsTable();
+  });
+  listeners.push(()=>sRef.off('value',sOff));
+
+  // Injured players listener
+  const injRef=db.ref('/injured');
+  const injOff=injRef.on('value',snap=>{
+    injuredPlayers=snap.exists()?(Array.isArray(snap.val())?snap.val():Object.values(snap.val())):[]; 
+    renderInjuredPanel();
+    document.getElementById('c-injured').textContent=injuredPlayers.length||'';
+    Object.keys(PLAYER_DATA).forEach(renderCategoryPanel);
+    if(isAdmin) populateAdminPlayers();
+  });
+  listeners.push(()=>injRef.off('value',injOff));
+  const tRef=db.ref('/teams');
+  const tOff=tRef.on('value',snap=>{
+    const fresh=snap.val()||{};
+    // Deep-merge to ensure players arrays and playerPrices are never lost
+    const repairUpdates={};
+    Object.keys(fresh).forEach(id=>{
+      // Firebase sometimes converts arrays to objects — always force to array
+      if(!fresh[id].players) fresh[id].players=[];
+      else if(!Array.isArray(fresh[id].players)){
+        fresh[id].players=Object.values(fresh[id].players);
+        // Auto-repair in Firebase so everyone sees correct data
+        if(isAdmin) repairUpdates['/teams/'+id+'/players']=fresh[id].players;
+      }
+      if(!fresh[id].playerPrices) fresh[id].playerPrices={};
+      else if(Array.isArray(fresh[id].playerPrices)){
+        fresh[id].playerPrices={};
+        if(isAdmin) repairUpdates['/teams/'+id+'/playerPrices']={};
+      }
+      if(fresh[id].purse===undefined) fresh[id].purse=TOTAL_PURSE;
+    });
+    teamsData=fresh;
+    // If admin detected corruption, silently repair Firebase
+    if(isAdmin && Object.keys(repairUpdates).length){
+      db.ref('/').update(repairUpdates).catch(e=>console.error('Auto-repair failed:',e));
+    }
+    updateHeaderUser();
+    updateSubtitle();
+    renderTeamsOverview();
+    renderBidsTable();
+    renderMyTeam();
+    if(isAdmin){ renderManageTeams(); renderAllSquadsPanel(); renderSquadManager(); }
+    updateMyWallet();
+    // Update sold/unsold counts on team data change too
+    document.getElementById('sold-count').textContent=(auctionState.soldLog||[]).filter(s=>s.sold).length;
+  });
+  listeners.push(()=>tRef.off('value',tOff));
+
+  const aRef=db.ref('/auction');
+  const aOff=aRef.on('value',snap=>{
+    const prev=auctionState;
+    auctionState=snap.val()||{status:'idle',currentPlayer:null,basePrice:0,bids:{},soldLog:[],timerEnd:null};
+    // If auction just went idle (player sold/unsold) force re-fetch teams to ensure squad & purse are in sync
+    if(prev.status==='live' && auctionState.status==='idle'){
+      db.ref('/teams').get().then(ts=>{
+        if(ts.exists()){
+          const fresh=ts.val()||{};
+          Object.keys(fresh).forEach(id=>{
+            if(!fresh[id].players) fresh[id].players=[];
+            else if(!Array.isArray(fresh[id].players)) fresh[id].players=Object.values(fresh[id].players);
+            if(!fresh[id].playerPrices) fresh[id].playerPrices={};
+            else if(Array.isArray(fresh[id].playerPrices)) fresh[id].playerPrices={};
+            if(!fresh[id].playerPrices) fresh[id].playerPrices={};
+            if(fresh[id].purse===undefined) fresh[id].purse=TOTAL_PURSE;
+          });
+          teamsData=fresh;
+        }
+        handleTimerSync(prev);
+        refreshAll();
+      }).catch(()=>{ handleTimerSync(prev); refreshAll(); });
+    } else {
+      handleTimerSync(prev);
+      refreshAll();
+    }
+  });
+  listeners.push(()=>aRef.off('value',aOff));
+  setupConsoleListener();
+}
+
+async function initTeamsInFirebase(){
+  // First-run setup only: store the default purse. No teams are created automatically.
+  const st=await db.ref('/settings/defaultPurse').get();
+  if(!st.exists()) await db.ref('/settings/defaultPurse').set(TOTAL_PURSE);
+  const as=await db.ref('/auction').get();
+  if(!as.exists()) await db.ref('/auction').set({status:'idle',currentPlayer:null,basePrice:0,bids:{},soldLog:[],timerEnd:null});
+}
+
+// ═══════════════════════ TIMER ═══════════════════════
+function handleTimerSync(prev){
+  const auc=auctionState;
+  if(auc.status==='live'&&auc.timerEnd){
+    startLocalTimer(auc.timerEnd);
+  } else {
+    stopTimer();
+  }
+}
+
+function startLocalTimer(endTimestamp){
+  stopTimer();
+  const wrap=document.getElementById('timer-ring-wrap');
+  wrap.style.display='flex';
+  localTimerRunning=true;
+
+  function tick(){
+    const now=Date.now();
+    const remaining=Math.max(0,Math.round((endTimestamp-now)/1000));
+    const pct=remaining/TIMER_SECS;
+    const offset=113*(1-pct);
+
+    const numEl=document.getElementById('timer-num');
+    const circleEl=document.getElementById('timer-circle');
+    numEl.textContent=remaining;
+
+    if(remaining<=10){
+      numEl.style.color='var(--red)';
+      circleEl.style.stroke='var(--red)';
+    } else if(remaining<=30){
+      numEl.style.color='var(--gold)';
+      circleEl.style.stroke='var(--gold)';
+    } else {
+      numEl.style.color='var(--green)';
+      circleEl.style.stroke='var(--green)';
+    }
+    circleEl.style.strokeDashoffset=offset;
+
+    if(remaining<=0){
+      stopTimer();
+      if(isAdmin) handleTimerExpiry();
+    }
+  }
+  tick();
+  timerInterval=setInterval(tick,500);
+}
+
+function stopTimer(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+  localTimerRunning=false;
+  const wrap=document.getElementById('timer-ring-wrap');
+  if(wrap) wrap.style.display='none';
+}
+
+async function handleTimerExpiry(){
+  // Only admin triggers the auto-sell/unsold
+  const bids=auctionState.bids||{};
+  const entries=Object.entries(bids).sort((a,b)=>b[1]-a[1]);
+  if(entries.length>0){
+    await performSell(entries[0][0],entries[0][1]);
+  } else {
+    await performUnsold();
+  }
+}
+
+// ═══════════════════════ STATUS BAR ═══════════════════════
+function updateStatusBar(){
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  const pauseBtn=document.getElementById('pause-btn');
+  const s=auctionState.status||'idle';
+  dot.className='status-dot';
+  if(s==='live'){dot.classList.add('live');txt.textContent='AUCTION LIVE';}
+  else if(s==='paused'){dot.classList.add('paused');txt.textContent='AUCTION PAUSED';}
+  else{dot.classList.add('idle');txt.textContent='WAITING TO START';}
+  if(pauseBtn) pauseBtn.textContent=s==='paused'?'▶ RESUME':'⏸ PAUSE';
+}
+
+// ═══════════════════════ TEAMS OVERVIEW ═══════════════════════
+function renderTeamsOverview(){
+  const el=document.getElementById('teams-overview');
+  let html='';
+  Object.entries(teamsData).forEach(([id,team])=>{
+    const purse=team.purse??TOTAL_PURSE;
+    const pct=pursePct(team);
+    const players=team.players||[];
+    const foreignCount=players.filter(p=>isForeign(p)).length;
+    const isMe=id===currentUser;
+    html+=`<div class="team-purse-card" style="${isMe?'border-color:rgba(255,184,0,.5);':''}" >
+      <div class="team-purse-name" style="${isMe?'color:var(--gold);':''}">${team.name||id.toUpperCase()}${isMe?' <span style="font-size:9px;color:var(--muted);">(YOU)</span>':''}</div>
+      <div class="team-purse-val">₹${purse.toFixed(2)}</div>
+      <div class="team-purse-label">PURSE REMAINING</div>
+      <div class="purse-bar-wrap"><div class="purse-bar${pct<25?' low':''}" style="width:${pct}%"></div></div>
+      <div class="team-stats-row">
+        <div class="team-stat">🏏 <strong>${players.length}</strong>/${MAX_SQUAD}</div>
+        <div class="team-stat">🌍 <strong style="color:${foreignCount>=MAX_FOREIGN?'var(--red)':'var(--blue)'}">${foreignCount}</strong>/${MAX_FOREIGN}</div>
+        ${players.length<MIN_SQUAD?`<div class="team-stat" style="color:var(--gold);font-size:10px;">Min ${MIN_SQUAD} req.</div>`:''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ═══════════════════════ CURRENT PLAYER ═══════════════════════
+function renderCurrentPlayer(){
+  const card=document.getElementById('current-player-card');
+  const auc=auctionState;
+  if(!auc.currentPlayer){card.classList.remove('visible');document.getElementById('bid-section').style.display='none';return;}
+  card.classList.add('visible');
+  document.getElementById('auc-player-name').textContent=auc.currentPlayer;
+  document.getElementById('auc-player-meta').textContent=getPlayerMeta(auc.currentPlayer);
+  document.getElementById('auc-flag').textContent=flag(auc.currentPlayer);
+  document.getElementById('auc-base-price').textContent='₹'+auc.basePrice;
+
+  const bids=auc.bids||{};
+  const entries=Object.entries(bids).sort((a,b)=>b[1]-a[1]);
+  const top=entries[0];
+
+  if(top){
+    document.getElementById('auc-current-bid').textContent='₹'+top[1].toFixed(2);
+    const tn=teamsData[top[0]]?.name||top[0].toUpperCase();
+    document.getElementById('auc-leading-tag').innerHTML=`<span class="leading-team">🏆 ${tn}</span>`;
+  } else {
+    document.getElementById('auc-current-bid').textContent='₹'+auc.basePrice;
+    document.getElementById('auc-leading-tag').innerHTML=`<span class="no-bid-tag">NO BID YET</span>`;
+  }
+
+  // Bid section
+  if(!isAdmin&&auc.status==='live'){
+    document.getElementById('bid-section').style.display='block';
+    updateMyWallet();
+    const team=teamsData[currentUser]||{};
+    const players=team.players||[];
+    const foreignCount=players.filter(p=>isForeign(p)).length;
+    document.getElementById('my-squad-count').textContent=`${players.length}/${MAX_SQUAD}`;
+    document.getElementById('my-foreign-count').textContent=`${foreignCount}/${MAX_FOREIGN}`;
+    document.getElementById('my-foreign-count').style.color=foreignCount>=MAX_FOREIGN?'var(--red)':'var(--blue)';
+
+    // Check blocking conditions
+    let blockReason='';
+    if(players.length>=MAX_SQUAD) blockReason='Squad full (25/25). Cannot bid.';
+    else if(isForeign(auc.currentPlayer)&&foreignCount>=MAX_FOREIGN) blockReason='Foreign player limit reached (8/8). Cannot bid.';
+
+    const blockEl=document.getElementById('bid-block-reason');
+    if(blockReason){
+      blockEl.innerHTML=`<div class="blocked-tag">🚫 ${blockReason}</div>`;
+      document.getElementById('bid-buttons').innerHTML='';
+      document.getElementById('my-bid-display').innerHTML='';
+    } else {
+      blockEl.innerHTML='';
+      renderBidButtons(auc,top);
+      const myBid=bids[currentUser];
+      document.getElementById('my-bid-display').innerHTML=myBid?`<div class="my-bid-tag">YOUR BID: ₹${myBid.toFixed(2)}</div>`:'';
+    }
+  } else {
+    document.getElementById('bid-section').style.display='none';
+  }
+}
+
+function renderBidButtons(auc,top){
+  const incrList=[0.1,0.15,0.2,0.25,0.3,0.4,0.5,0.6];
+  const curTop=top?top[1]:auc.basePrice;
+  const myPurse=teamsData[currentUser]?.purse??TOTAL_PURSE;
+  let html='';
+  incrList.forEach(inc=>{
+    const nb=+(curTop+inc).toFixed(2);
+    const tooExpensive=nb>myPurse;
+    const alreadyLeading=top&&top[0]===currentUser;
+    const dis=(tooExpensive||alreadyLeading)?'disabled':'';
+    html+=`<button class="bid-btn" ${dis} onclick="placeBid(${nb})">+₹${inc}<br><span style="font-size:11px;color:var(--muted)">= ₹${nb}</span></button>`;
+  });
+  document.getElementById('bid-buttons').innerHTML=html;
+}
+
+function updateMyWallet(){
+  const el=document.getElementById('my-wallet');
+  if(el&&teamsData[currentUser]) el.textContent='₹'+(teamsData[currentUser].purse??TOTAL_PURSE).toFixed(2);
+}
+
+// ═══════════════════════ PLACE BID ═══════════════════════
+async function placeBid(amount){
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  if(!currentUser||isAdmin) return;
+  const team=teamsData[currentUser]||{};
+  const players=team.players||[];
+  const foreignCount=players.filter(p=>isForeign(p)).length;
+  const player=auctionState.currentPlayer;
+
+  if(players.length>=MAX_SQUAD){toast('Squad full!','red');return;}
+  if(isForeign(player)&&foreignCount>=MAX_FOREIGN){toast('Foreign limit reached!','red');return;}
+  if(amount>(team.purse??TOTAL_PURSE)){toast('Not enough purse!','red');return;}
+  if(!auctionLive){toast('Auction is currently offline!','red');return;}
+  if(auctionState.status!=='live'){toast('No player on auction right now!','red');return;}
+
+  if(DEMO()){
+    if(!auctionState.bids) auctionState.bids={};
+    auctionState.bids[currentUser]=amount;
+    // Reset timer in demo
+    auctionState.timerEnd=Date.now()+TIMER_SECS*1000;
+    startLocalTimer(auctionState.timerEnd);
+    renderCurrentPlayer(); renderBidsTable();
+  } else {
+    const newTimerEnd=Date.now()+TIMER_SECS*1000;
+    await db.ref('/auction/bids/'+currentUser).set(amount);
+    await db.ref('/auction/timerEnd').set(newTimerEnd);
+  }
+  const teamName = teamsData[currentUser]?.name || currentUser.toUpperCase();
+  addConsoleLog('bid', `💰 ${teamName} bid ₹${amount} on ${flag(player)} ${player}`, `Purse after bid: ₹${((team.purse??TOTAL_PURSE)-amount+(auctionState.bids?.[currentUser]||0)).toFixed(2)} remaining`);
+  toast(`Bid placed: ₹${amount}`,'green');
+}
+
+// ═══════════════════════ BIDS TABLE ═══════════════════════
+function renderBidsTable(){
+  const tbody=document.getElementById('live-bids-body');
+  const bids=auctionState.bids||{};
+  const entries=Object.entries(bids).sort((a,b)=>b[1]-a[1]);
+  const topTeam=entries[0]?.[0];
+  let html='';
+  Object.entries(teamsData).forEach(([id,team])=>{
+    const bid=bids[id];
+    const isTop=id===topTeam&&bid!==undefined;
+    const purse=team.purse??TOTAL_PURSE;
+    const pct=pursePct(team);
+    const players=team.players||[];
+    const foreignCount=players.filter(p=>isForeign(p)).length;
+    html+=`<tr class="${isTop?'leading':''}">
+      <td><span style="font-weight:700">${team.name||id.toUpperCase()}</span>${id===currentUser?' <span style="font-size:10px;color:var(--muted)">(YOU)</span>':''}${isTop?' <span style="font-size:10px;color:var(--green)">▲ LEADING</span>':''}</td>
+      <td><span class="bid-amount${isTop?' top':''}">${bid!==undefined?'₹'+bid.toFixed(2):'—'}</span></td>
+      <td><span style="font-family:'Orbitron',monospace;font-size:11px;color:${purse<5?'var(--red)':'var(--text)'}">₹${purse.toFixed(2)}</span><div class="purse-bar-wrap"><div class="purse-bar${pct<25?' low':''}" style="width:${pct}%"></div></div></td>
+      <td style="font-family:'Orbitron',monospace;font-size:11px;color:${players.length>=MAX_SQUAD?'var(--red)':'var(--text)'}">${players.length}/${MAX_SQUAD}</td>
+      <td style="font-family:'Orbitron',monospace;font-size:11px;color:${foreignCount>=MAX_FOREIGN?'var(--red)':'var(--blue)'}">${foreignCount}/${MAX_FOREIGN}</td>
+    </tr>`;
+  });
+  if(!html) html='<tr><td colspan="5" style="color:var(--muted);padding:16px;">Waiting for teams...</td></tr>';
+  tbody.innerHTML=html;
+}
+
+// ═══════════════════════ SOLD LOG ═══════════════════════
+function renderSoldLog(){
+  const el=document.getElementById('sold-list');
+  const log=(auctionState.soldLog||[]).slice().reverse();
+  if(!log.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;letter-spacing:1px;">No players sold yet</div>';return;}
+  let html='';
+  log.forEach(entry=>{
+    const tn=teamsData[entry.team]?.name||(entry.team||'').toUpperCase();
+    if(entry.sold){
+      html+=`<div class="sold-row"><span class="sold-player">${entry.player} ${flag(entry.player)}</span><span class="sold-team-tag">${tn}</span><span class="sold-price-tag">₹${entry.price}</span></div>`;
+    } else {
+      html+=`<div class="sold-row"><span class="sold-player" style="color:var(--muted)">${entry.player} ${flag(entry.player)}</span><span class="unsold-tag">UNSOLD</span></div>`;
+    }
+  });
+  el.innerHTML=html;
+}
+
+// ═══════════════════════ MY TEAM PANEL ═══════════════════════
+function renderMyTeam(){
+  if(!currentUser||isAdmin) return;
+  const el=document.getElementById('myteam-content');
+  const team=teamsData[currentUser]||{name:currentUser.toUpperCase(),purse:TOTAL_PURSE,players:[]};
+  const players=team.players||[];
+  const prices=team.playerPrices||{};
+  const foreignCount=players.filter(p=>isForeign(p)).length;
+  const domesticCount=players.length-foreignCount;
+  const purse=team.purse??TOTAL_PURSE;
+  const pct=(players.length/MAX_SQUAD)*100;
+  const fPct=(foreignCount/MAX_FOREIGN)*100;
+
+  // My team header
+  let html=`<div class="squad-header">
+    <div class="squad-team-name">${team.name||currentUser.toUpperCase()}</div>
+    <div class="squad-stats">
+      <div class="squad-stat"><div class="squad-stat-num" style="color:var(--gold)">₹${purse.toFixed(2)}</div><div class="squad-stat-label">Purse Left</div></div>
+      <div class="squad-stat"><div class="squad-stat-num" style="color:var(--green)">${players.length}</div><div class="squad-stat-label">Players</div></div>
+      <div class="squad-stat"><div class="squad-stat-num" style="color:var(--blue)">${foreignCount}</div><div class="squad-stat-label">Foreign</div></div>
+      <div class="squad-stat"><div class="squad-stat-num" style="color:var(--text)">${domesticCount}</div><div class="squad-stat-label">Domestic</div></div>
+      <div class="squad-stat"><div class="squad-stat-num" style="color:${MAX_SQUAD-players.length===0?'var(--red)':'var(--muted)'}">${MAX_SQUAD-players.length}</div><div class="squad-stat-label">Slots Left</div></div>
+    </div>
+    <div class="squad-progress">
+      <div class="squad-progress-label"><span>SQUAD ${players.length}/${MAX_SQUAD}</span><span style="color:${players.length<MIN_SQUAD?'var(--gold)':'var(--green)'}">MIN ${MIN_SQUAD} REQUIRED</span></div>
+      <div class="squad-progress-bar"><div class="squad-progress-fill" style="width:${Math.min(pct,100)}%;background:${players.length>=MAX_SQUAD?'var(--red)':players.length>=MIN_SQUAD?'var(--green)':'var(--gold)'}"></div></div>
+    </div>
+    <div class="squad-progress" style="margin-top:8px;">
+      <div class="squad-progress-label"><span>FOREIGN ${foreignCount}/${MAX_FOREIGN}</span><span style="color:${foreignCount>=MAX_FOREIGN?'var(--red)':'var(--blue)'}">MAX 8 ALLOWED</span></div>
+      <div class="squad-progress-bar"><div class="squad-progress-fill" style="width:${Math.min(fPct,100)}%;background:${foreignCount>=MAX_FOREIGN?'var(--red)':'var(--blue)'}"></div></div>
+    </div>
+  </div>`;
+
+  // My players list
+  if(players.length>0){
+    html+=`<div style="margin-bottom:16px;">
+      <div class="section-title" style="margin-bottom:12px;">🏏 MY SQUAD (${players.length} players)</div>`;
+    players.forEach((p,i)=>{
+      const isFore=isForeign(p);
+      const price=getPriceFromPrices(prices,p);
+      html+=`<div class="squad-player-chip">
+        <span class="squad-player-no">${String(i+1).padStart(2,'0')}</span>
+        <span style="font-size:14px;">${flag(p)}</span>
+        <span class="squad-player-name">${p}</span>
+        ${isFore?'<span class="foreign-badge">FOREIGN</span>':'<span class="india-badge">DOMESTIC</span>'}
+        ${price?`<span class="squad-player-price">₹${price}</span>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  } else {
+    html+=`<div style="text-align:center;padding:40px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">🏏</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;">NO PLAYERS YET</div>
+      <div style="font-size:13px;margin-top:6px;">Start bidding in the Live Auction tab!</div>
+    </div>`;
+  }
+
+  // Other teams section
+  html+=`<div id="other-teams-section">
+    <div class="section-title" style="margin-bottom:4px;">👥 ALL TEAMS</div>
+    <div class="other-teams-grid">`;
+
+  Object.entries(teamsData).forEach(([id,t])=>{
+    if(id===currentUser) return;
+    const tPlayers=t.players||[];
+    const tPrices=t.playerPrices||{};
+    const tForeign=tPlayers.filter(p=>isForeign(p)).length;
+    html+=`<div class="other-team-card">
+      <div class="other-team-header">
+        <div class="other-team-name">${t.name||id.toUpperCase()}</div>
+        <div class="other-team-meta">
+          <span>🏏 ${tPlayers.length}/${MAX_SQUAD}</span>
+          <span>🌍 ${tForeign}/${MAX_FOREIGN}</span>
+          <span style="color:var(--gold)">₹${(t.purse??TOTAL_PURSE).toFixed(2)}</span>
+        </div>
+      </div>
+      <div class="other-team-players">`;
+    if(tPlayers.length>0){
+      tPlayers.forEach((p,i)=>{
+        const isFore=isForeign(p);
+        const price=getPriceFromPrices(tPrices,p);
+        html+=`<div class="squad-player-chip">
+          <span class="squad-player-no">${String(i+1).padStart(2,'0')}</span>
+          <span style="font-size:13px;">${flag(p)}</span>
+          <span class="squad-player-name">${p}</span>
+          ${isFore?'<span class="foreign-badge">FOREIGN</span>':''}
+          ${price?`<span class="squad-player-price">₹${price}</span>`:''}
+        </div>`;
+      });
+    } else {
+      html+=`<div style="color:var(--muted);font-size:12px;padding:8px 0;text-align:center;">No players yet</div>`;
+    }
+    html+='</div></div>';
+  });
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════ ADMIN ACTIONS ═══════════════════════
+function populateAdminPlayers(){
+  const cat=document.getElementById('admin-cat-select').value;
+  const sel=document.getElementById('admin-player-select');
+  sel.innerHTML='<option value="">— Select Player —</option>';
+  if(!cat) return;
+
+  if(cat==='unsold_pool'){
+    // Show unsold players grouped by category
+    const unsoldLog=(auctionState.soldLog||[]).filter(s=>!s.sold);
+    if(!unsoldLog.length){
+      const o=document.createElement('option');
+      o.value=''; o.textContent='No unsold players yet'; o.disabled=true;
+      sel.appendChild(o);
+      return;
+    }
+    // Group by category
+    const groups={pace:[],spin:[],bat:[],wk:[],ar:[],unknown:[]};
+    const groupLabels={pace:'🔥 Pace Bowlers',spin:'🌀 Spinners',bat:'🏏 Batters',wk:'🧤 Wicketkeepers',ar:'⚡ All-Rounders',unknown:'❓ Other'};
+    unsoldLog.forEach(entry=>{
+      const key=getPlayerCategoryKey(entry.player)||'unknown';
+      groups[key].push(entry.player);
+    });
+    Object.entries(groups).forEach(([key,players])=>{
+      if(!players.length) return;
+      const og=document.createElement('optgroup');
+      og.label=groupLabels[key];
+      players.forEach(p=>{
+        const o=document.createElement('option');
+        o.value=p;
+        o.textContent=p+(isForeign(p)?' ✈':'');
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  } else {
+    const processedNames=(auctionState.soldLog||[]).map(s=>s.player);
+    const injuredNames=(injuredPlayers||[]).map(p=>p.name);
+    const allExcluded=[...processedNames,...injuredNames];
+    PLAYER_DATA[cat].sets.forEach(set=>{
+      const og=document.createElement('optgroup'); og.label=set.name;
+      set.players.forEach(p=>{
+        if(!allExcluded.includes(p)){const o=document.createElement('option');o.value=p;o.textContent=p+(isForeign(p)?' ✈':'');og.appendChild(o);}
+      });
+      if(og.children.length) sel.appendChild(og);
+    });
+  }
+  sel.onchange=()=>{ const p=sel.value; if(p) document.getElementById('admin-base-price').value=getBasePriceNum(p); };
+}
+
+// ── Keep unsold pool option updated dynamically ──
+function updateUnsoldPoolOption(){
+  const unsoldCount=(auctionState.soldLog||[]).filter(s=>!s.sold).length;
+  const opt=document.getElementById('unsold-pool-option');
+  if(!opt) return;
+  opt.textContent=`🔴 Unsold Players${unsoldCount>0?' ('+unsoldCount+')':''}`;
+  opt.disabled=unsoldCount===0;
+  opt.style.color=unsoldCount>0?'#ff6b6b':'var(--muted)';
+}
+
+async function adminAnnounce(){
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  if(!auctionLive){toast('Set auction to LIVE first before announcing a player!','red');return;}
+  const player=document.getElementById('admin-player-select').value;
+  const base=parseFloat(document.getElementById('admin-base-price').value);
+  if(!player){toast('Select a player first','red');return;}
+  if(isNaN(base)||base<=0){toast('Enter valid base price','red');return;}
+  const timerEnd=Date.now()+TIMER_SECS*1000;
+  await writeAuction({currentPlayer:player,basePrice:base,bids:{},status:'live',timerEnd});
+  addConsoleLog('announce',`🎤 ${flag(player)} ${player} announced for auction`,`Base price: ₹${base.toFixed(2)} · ${getPlayerMeta(player)}${isForeign(player)?' · ✈ Foreign':' · 🇮🇳 Domestic'} · Timer: ${TIMER_SECS}s`);
+  toast(`${player} announced!`,'green');
+}
+
+async function adminSell(){
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  if(sellInProgress){toast('Sale already processing...','red');return;}
+  const bids=auctionState.bids||{};
+  const entries=Object.entries(bids).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){toast('No bids placed yet!','red');return;}
+  if(!auctionState.currentPlayer){toast('No player on auction','red');return;}
+  const btn=document.getElementById('sell-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ SELLING...';}
+  await performSell(entries[0][0],entries[0][1]);
+  if(btn){btn.disabled=false;btn.textContent='✅ SELL';}
+}
+
+async function performSell(winTeam,winPrice){
+  if(sellInProgress){ toast('Sale already in progress...','red'); return; }
+  const player=auctionState.currentPlayer;
+  if(!player) return;
+  if(auctionState.status==='idle'){ toast('Player already sold or no auction active.','red'); return; }
+  if(!teamsData[winTeam]){ toast('Winning team no longer exists — reset bids and try again.','red'); return; }
+  sellInProgress=true;
+  stopTimer();
+  const newLog=[...(auctionState.soldLog||[]),{player,team:winTeam,price:winPrice.toFixed(2),sold:true}];
+  const teamName = teamsData[winTeam]?.name || winTeam.toUpperCase();
+  const oldPurse = teamsData[winTeam]?.purse ?? TOTAL_PURSE;
+  const newPurse = +((oldPurse) - winPrice).toFixed(2);
+  const playerMeta = getPlayerMeta(player);
+  const isFore = isForeign(player);
+  if(DEMO()){
+    sellInProgress=false;
+    document.getElementById('so-player').textContent=player;
+    document.getElementById('so-team').textContent=(teamsData[winTeam]?.name||winTeam).toUpperCase();
+    document.getElementById('so-price').textContent='₹'+winPrice.toFixed(2);
+    document.getElementById('sold-overlay').classList.add('show');
+    setTimeout(()=>document.getElementById('sold-overlay').classList.remove('show'),3500);
+    auctionState={...auctionState,currentPlayer:null,bids:{},status:'idle',soldLog:newLog,timerEnd:null};
+    const t=teamsData[winTeam]||{...DEFAULT_TEAMS[winTeam]};
+    t.purse=newPurse;
+    if(!t.players) t.players=[];
+    t.players=[...t.players,player];
+    if(!t.playerPrices) t.playerPrices={};
+    t.playerPrices[player]=winPrice.toFixed(2);
+    teamsData[winTeam]=t;
+    const squadSize=(t.players||[]).length;
+    const foreignCount=(t.players||[]).filter(p=>isForeign(p)).length;
+    addConsoleLog('sold',
+      `${flag(player)} ${player} → ${teamName}`,
+      `Sold for ₹${winPrice.toFixed(2)} · ${playerMeta}${isFore?' · 🌍 Foreign':''} · Squad: ${squadSize}/${MAX_SQUAD} · Foreign: ${foreignCount}/${MAX_FOREIGN} · Purse left: ₹${newPurse.toFixed(2)}`
+    );
+    refreshAll();
+  } else {
+    const t=teamsData[winTeam]||{};
+    const newPlayers=[...(t.players||[]),player];
+    const newPrices={...(t.playerPrices||{}),[fbKey(player)]:winPrice.toFixed(2)};
+    const squadSize=newPlayers.length;
+    const foreignCount=newPlayers.filter(p=>isForeign(p)).length;
+
+    // Single atomic multi-path update — either ALL writes succeed or NONE do
+    const updates = {};
+    updates['/auction/currentPlayer'] = null;
+    updates['/auction/bids'] = {};
+    updates['/auction/status'] = 'idle';
+    updates['/auction/soldLog'] = newLog;
+    updates['/auction/timerEnd'] = null;
+    updates[`/teams/${winTeam}/purse`] = newPurse;
+    updates[`/teams/${winTeam}/players`] = newPlayers;
+    updates[`/teams/${winTeam}/playerPrices`] = newPrices;
+
+    let retries = 3;
+    while(retries > 0){
+      try{
+        await db.ref('/').update(updates);
+        sellInProgress=false;
+        // Show overlay ONLY after confirmed successful write
+        document.getElementById('so-player').textContent=player;
+        document.getElementById('so-team').textContent=(teamsData[winTeam]?.name||winTeam).toUpperCase();
+        document.getElementById('so-price').textContent='₹'+winPrice.toFixed(2);
+        document.getElementById('sold-overlay').classList.add('show');
+        setTimeout(()=>document.getElementById('sold-overlay').classList.remove('show'),3500);
+        break; // success
+      } catch(e){
+        retries--;
+        if(retries === 0){
+          sellInProgress=false;
+          toast('⚠️ Network error — retrying sale failed. Please check squads manually.','red');
+          console.error('performSell failed after 3 retries:', e);
+          return;
+        }
+        await new Promise(r=>setTimeout(r,1000)); // wait 1s before retry
+      }
+    }
+
+    addConsoleLog('sold',
+      `${flag(player)} ${player} → ${teamName}`,
+      `Sold for ₹${winPrice.toFixed(2)} · ${playerMeta}${isFore?' · 🌍 Foreign':''} · Squad: ${squadSize}/${MAX_SQUAD} · Foreign: ${foreignCount}/${MAX_FOREIGN} · Purse left: ₹${newPurse.toFixed(2)}`
+    );
+  }
+}
+
+async function adminUnsold(){
+  if(!auctionState.currentPlayer){toast('No player on auction','red');return;}
+  await performUnsold();
+}
+
+async function performUnsold(){
+  const player=auctionState.currentPlayer;
+  if(!player) return;
+  stopTimer();
+  document.getElementById('uo-player').textContent=player;
+  document.getElementById('unsold-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('unsold-overlay').classList.remove('show'),2500);
+  const newLog=[...(auctionState.soldLog||[]),{player,sold:false}];
+  addConsoleLog('unsold',`${player} went UNSOLD`,'No bids were placed or timer expired with no bids');
+  await writeAuction({currentPlayer:null,bids:{},status:'idle',soldLog:newLog,timerEnd:null});
+}
+
+async function adminTogglePause(){
+  const s=auctionState.status;
+  const player=auctionState.currentPlayer||'—';
+  if(s==='paused'){
+    const newEnd=Date.now()+TIMER_SECS*1000;
+    await writeAuction({status:'live',timerEnd:newEnd});
+    addConsoleLog('system',`⏵ Auction RESUMED by Admin`,`Current player: ${player} · Timer restarted at ${TIMER_SECS}s`);
+    toast('Auction Resumed','green');
+  } else {
+    stopTimer();
+    await writeAuction({status:'paused',timerEnd:null});
+    addConsoleLog('system',`⏸ Auction PAUSED by Admin`,`Current player: ${player} · Timer stopped`);
+    toast('Auction Paused','red');
+  }
+}
+
+async function adminReset(){
+  const player=auctionState.currentPlayer||'—';
+  await writeAuction({bids:{}});
+  addConsoleLog('system',`🔄 Bids RESET by Admin`,`All bids cleared for: ${player}`);
+  toast('Bids reset','green');
+}
+
+async function writeAuction(update){
+  if(DEMO()){
+    Object.assign(auctionState,update);
+    if(update.timerEnd) startLocalTimer(update.timerEnd);
+    else if(update.status&&update.status!=='live') stopTimer();
+    refreshAll();
+  } else {
+    await db.ref('/auction').update(update);
+  }
+}
+
+// ═══════════════════════ MANAGE TEAMS ═══════════════════════
+function renderManageTeams(){
+  const el=document.getElementById('team-manage-list');
+  if(!el) return;
+  const teams=teamsData;
+  let html='';
+  Object.entries(teams).forEach(([id,team])=>{
+    const players=team.players||[];
+    const foreign=players.filter(p=>isForeign(p)).length;
+    html+=`<div class="team-manage-row">
+      <span class="team-id-badge">${id}</span>
+      <input class="team-manage-input" id="tname-${id}" value="${(team.name||id.toUpperCase()).replace(/"/g,'&quot;')}" placeholder="Team Name"/>
+      <input class="team-manage-input" id="tpass-${id}" value="${(team.pass||'').replace(/"/g,'&quot;')}" placeholder="Password" type="text"/>
+      <span style="font-size:11px;color:var(--muted)">₹${(team.purse??TOTAL_PURSE).toFixed(2)} · ${players.length}p · ${foreign}🌍</span>
+      <button class="save-team-btn" onclick="saveTeam('${id}')">SAVE</button>
+      <button class="delete-team-btn" onclick="adminDeleteTeam('${id}')">🗑 DELETE</button>
+    </div>`;
+  });
+  if(!html) html='<div style="color:var(--muted);font-size:13px;padding:10px 0;text-align:center;">No teams yet — add one above.</div>';
+  el.innerHTML=html;
+}
+
+async function saveTeam(id){
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  const name=document.getElementById(`tname-${id}`).value.trim();
+  const pass=document.getElementById(`tpass-${id}`).value.trim();
+  if(!name||!pass){toast('Name and password required','red');return;}
+  const oldName=teamsData[id]?.name||id;
+  if(DEMO()){if(!teamsData[id])teamsData[id]={...DEFAULT_TEAMS[id]};teamsData[id].name=name;teamsData[id].pass=pass;renderTeamsOverview();renderBidsTable();}
+  else await db.ref(`/teams/${id}`).update({name,pass});
+  addConsoleLog('system',`✏️ Team details updated by Admin`,`${id}: Name → "${name}"${oldName!==name?` (was "${oldName}")`:''} · Password updated`);
+  toast(`${name} saved!`,'green');
+}
+
+// ── Default purse (applies to teams created AFTER saving) ──
+async function adminSaveDefaultPurse(){
+  if(!isAdmin){toast('Access denied','red');return;}
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  const raw=document.getElementById('default-purse-input').value;
+  const v=parseFloat(raw);
+  if(raw===''||isNaN(v)||v<=0){toast('Enter a valid purse amount (greater than 0)','red');return;}
+  const val=+v.toFixed(2);
+  const old=TOTAL_PURSE;
+  if(!DEMO()){
+    try{ await db.ref('/settings/defaultPurse').set(val); }
+    catch(e){ toast('Failed to save default purse','red'); console.error(e); return; }
+  }
+  TOTAL_PURSE=val;
+  syncPurseSettingUI(); updateSubtitle(); renderTeamsOverview(); renderBidsTable();
+  addConsoleLog('system',`💰 Default purse changed by Admin`,`₹${(+old).toFixed(2)} → ₹${val.toFixed(2)} · Applies to newly created teams (and Full System Reset)`);
+  toast(`Default purse set to ₹${val.toFixed(2)}`,'green');
+}
+
+// ── Add a new team ──
+async function adminAddTeam(){
+  if(!isAdmin){toast('Access denied','red');return;}
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  let id=document.getElementById('new-team-id').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  let name=document.getElementById('new-team-name').value.trim();
+  const pass=document.getElementById('new-team-pass').value.trim();
+  const purseRaw=document.getElementById('new-team-purse').value.trim();
+
+  if(!id){
+    let n=Object.keys(teamsData).length+1;
+    while(teamsData['team'+n]) n++;
+    id='team'+n;
+  }
+  if(id===ADMIN_CREDS.id){toast('"admin" is a reserved ID','red');return;}
+  if(teamsData[id]){toast('Team ID "'+id+'" already exists','red');return;}
+  if(!name) name=id.toUpperCase();
+  if(!pass){toast('Password is required for the new team','red');return;}
+
+  let purse=TOTAL_PURSE;
+  if(purseRaw!==''){
+    purse=parseFloat(purseRaw);
+    if(isNaN(purse)||purse<0){toast('Enter a valid purse amount','red');return;}
+  }
+  purse=+purse.toFixed(2);
+  const team={name,pass,purse,startPurse:purse,players:[],playerPrices:{}};
+
+  if(DEMO()){
+    teamsData[id]=team;
+    renderManageTeams(); renderSquadManager(); renderAllSquadsPanel(); refreshAll();
+  } else {
+    try{
+      // transaction makes sure we never overwrite an existing team with the same ID
+      const res=await db.ref('/teams/'+id).transaction(cur=>cur?undefined:team);
+      if(!res.committed){toast('Team ID "'+id+'" already exists','red');return;}
+    } catch(e){
+      toast('⚠️ Failed to add team — check connection','red');
+      console.error('adminAddTeam failed:',e);
+      return;
+    }
+  }
+  addConsoleLog('add',`➕ New team created: ${name}`,`ID: ${id} · Starting purse: ₹${purse.toFixed(2)}${purseRaw===''?' (default)':' (custom)'}`);
+  ['new-team-id','new-team-name','new-team-pass','new-team-purse'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
+  toast(`${name} added with ₹${purse.toFixed(2)} purse`,'green');
+}
+
+// ── In-page confirm dialog (returns a Promise<boolean>) ──
+function askConfirm(title,msg,yesLabel){
+  return new Promise(resolve=>{
+    const m=document.getElementById('confirm-modal');
+    document.getElementById('confirm-title').textContent=title;
+    document.getElementById('confirm-msg').textContent=msg;
+    const yes=document.getElementById('confirm-yes'), no=document.getElementById('confirm-no');
+    yes.textContent=yesLabel||'YES';
+    const done=v=>{ m.style.display='none'; yes.onclick=null; no.onclick=null; resolve(v); };
+    yes.onclick=()=>done(true);
+    no.onclick=()=>done(false);
+    m.style.display='flex';
+  });
+}
+
+// ── Delete a team (only if its squad is empty) ──
+async function adminDeleteTeam(id){
+  if(!isAdmin){toast('Access denied','red');return;}
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  const team=teamsData[id];
+  if(!team) return;
+  const name=team.name||id;
+  if((team.players||[]).length){toast(`Remove all players from ${name} first (Squad Manager)`,'red');return;}
+  const hasPending=Object.values(tradesData||{}).some(t=>t.status==='pending'&&(t.from===id||t.to===id));
+  if(hasPending){toast(`${name} has a pending trade — resolve it first`,'red');return;}
+  // In-page confirmation (the browser's confirm() is silently blocked in some embedded/preview windows)
+  const ok=await askConfirm('🗑 DELETE TEAM',`Delete team "${name}" (${id})? This cannot be undone.`,'YES, DELETE');
+  if(!ok) return;
+  if(DEMO()){
+    delete teamsData[id];
+    if(auctionState.bids) delete auctionState.bids[id];
+    renderManageTeams(); renderSquadManager(); renderAllSquadsPanel(); refreshAll();
+  } else {
+    try{
+      const updates={};
+      updates['/teams/'+id]=null;
+      updates['/auction/bids/'+id]=null;
+      await db.ref('/').update(updates);
+    } catch(e){
+      toast('⚠️ Failed to delete team: '+(e&&e.message?e.message:'check Firebase rules / connection'),'red');
+      console.error('adminDeleteTeam failed:',e);
+      return;
+    }
+  }
+  addConsoleLog('remove',`🗑 Team deleted: ${name}`,`ID: ${id} · Wallet at deletion: ₹${(team.purse??TOTAL_PURSE).toFixed(2)}`);
+  toast(`${name} deleted`,'red');
+}
+
+// ═══════════════════════ TABS ═══════════════════════
+function showTab(key){
+  document.querySelectorAll('.category-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`panel-${key}`).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===key));
+  if(key==='myteam') renderMyTeam();
+  if(key==='trade') renderTradePanel();
+  if(key==='console') renderConsoleLogs();
+  if(key==='unsold') renderUnsoldPanel();
+  if(key==='sold-players') renderSoldPlayersPanel();
+  if(key==='injured') renderInjuredPanel();
+  if(key==='trade-history') renderTradeHistory();
+  if(key==='sold-log') renderSoldLog();
+  if(key==='allsquads') renderAllSquadsPanel();
+}
+
+// ═══════════════════════ TOAST ═══════════════════════
+function toast(msg,type=''){
+  const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// ═══════════════════════ FOREIGN CHECK ═══════════════════════
+const INDIAN_FLAGS=['🇮🇳'];
+function isForeign(name){
+  const f=flag(name);
+  return !INDIAN_FLAGS.includes(f);
+}
+
+// ═══════════════════════ PLAYER DATA ═══════════════════════
+const FLAGS={
+  "Bhuvneshwar Kumar":"🇮🇳","Yash Dayal":"🇮🇳","Rasikh Dar":"🇮🇳","Vicky Ostwal":"🇮🇳","Abhinandan Singh":"🇮🇳","Kanishk Chouhan":"🇮🇳","Mangesh Yadav":"🇮🇳","Satvik Deswal":"🇮🇳","Mohd. Shami":"🇮🇳","Mayank Yadav":"🇮🇳","Avesh Khan":"🇮🇳","Mohsin Khan":"🇮🇳","Akash Singh":"🇮🇳","Arjun Tendulkar":"🇮🇳","Manimaran Siddharth":"🇮🇳","Digvesh Rathi":"🇮🇳","Mukul Choudhary":"🇮🇳","Naman Tiwari":"🇮🇳","Harshit Rana":"🇮🇳","Deepak Chahar":"🇮🇳","Shardul Thakur":"🇮🇳","Mayank Markande":"🇮🇳","Atharva Ankolekar":"🇮🇳","Danish Malewar":"🇮🇳","Ashwani Kumar":"🇮🇳","Mohd. Izhar":"🇮🇳","Raghu Sharma":"🇮🇳","Shamsher Singh":"🇮🇳","Mohd. Siraj":"🇮🇳","Prasidh Krishna":"🇮🇳","Sai Kishore":"🇮🇳","Jayant Yadav":"🇮🇳","Ishant Sharma":"🇮🇳","Gurnoor Singh Brar":"🇮🇳","Ashok Sharma":"🇮🇳","Mohd. Arshad Khan":"🇮🇳","Prithvi Raj Yarra":"🇮🇳","Ravi Bishnoi":"🇮🇳","Sandeep Sharma":"🇮🇳","Tushar Deshpande":"🇮🇳","Harshal Patel":"🇮🇳","Jaydev Unadkat":"🇮🇳","Harsh Dubey":"🇮🇳","Zeeshan Ansari":"🇮🇳","Amit Kumar":"🇮🇳","Onkar Tarmale":"🇮🇳","Prafull Hinge":"🇮🇳","Sakib Hussain":"🇮🇳","Shivang Kumar":"🇮🇳","Smaran Ravichandaran":"🇮🇳","Arshdeep Singh":"🇮🇳","Yuzvendra Chahal":"🇮🇳","Vijaykumar Vyshak":"🇮🇳","Yash Thakur":"🇮🇳","Praveen Dubey":"🇮🇳","Harnoor Pannu":"🇮🇳","Musheer Khan":"🇮🇳","Pyla Avinash":"🇮🇳","Vishal Nishad":"🇮🇳","Khaleel Ahmed":"🇮🇳","Mukesh Choudhary":"🇮🇳","Rahul Chahar":"🇮🇳","Aman Khan":"🇮🇳","Anshul Kamboj":"🇮🇳","Gurjapneet Singh":"🇮🇳","Kartik Sharma":"🇮🇳","Ramakrishna Ghosh":"🇮🇳","Shreyas Gopal":"🇮🇳","Kuldeep Yadav":"🇮🇳","Mukesh Kumar":"🇮🇳","T. Natarajan":"🇮🇳","Sameer Rizvi":"🇮🇳","Madhav Tiwari":"🇮🇳","Sahil Parakh":"🇮🇳","Tripurana Vijay":"🇮🇳","Vipraj Nigam":"🇮🇳","Auqib Dar":"🇮🇳","Jasprit Bumrah":"🇮🇳","Virat Kohli":"🇮🇳","Rohit Sharma":"🇮🇳","Shubman Gill":"🇮🇳","KL Rahul":"🇮🇳","Yashasvi Jaiswal":"🇮🇳","Ruturaj Gaikwad":"🇮🇳","Shreyas Iyer":"🇮🇳","Suryakumar Yadav":"🇮🇳","Tilak Varma":"🇮🇳","Rinku Singh":"🇮🇳","Shashank Singh":"🇮🇳","Nehal Wadhera":"🇮🇳","Karun Nair":"🇮🇳","Nitish Rana":"🇮🇳","Sarfaraz Khan":"🇮🇳","Shahrukh Khan":"🇮🇳","Abdul Samad":"🇮🇳","Ayush Badoni":"🇮🇳","Aniket Verma":"🇮🇳","Himmat Singh":"🇮🇳","Ajinkya Rahane":"🇮🇳","Manish Pandey":"🇮🇳","Rahul Tripathi":"🇮🇳","Naman Dhir":"🇮🇳","Mayank Rawat":"🇮🇳","Shubham Dubey":"🇮🇳","Sarthak Ranjan":"🇮🇳","Sai Sudharsan":"🇮🇳","Devdutt Padikkal":"🇮🇳","Rajat Patidar":"🇮🇳","Angkrish Raghuvanshi":"🇮🇳","Prithvi Shaw":"🇮🇳","Priyansh Arya":"🇮🇳","Vaibhav Sooryavanshi":"🇮🇳","Ayush Mhatre":"🇮🇳","Riyan Parag":"🇮🇳","Nitish Kumar Reddy":"🇮🇳","Washington Sundar":"🇮🇳","Axar Patel":"🇮🇳","Ravindra Jadeja":"🇮🇳","Hardik Pandya":"🇮🇳","Rahul Tewatia":"🇮🇳","Ramandeep Singh":"🇮🇳","Krunal Pandya":"🇮🇳","Shahbaz Ahmed":"🇮🇳","Harpreet Brar":"🇮🇳","Shivam Mavi":"🇮🇳","Anukul Roy":"🇮🇳","Swapnil Singh":"🇮🇳","Prince Yadav":"🇮🇳","Raj Angad Bawa":"🇮🇳","Prashant Veer":"🇮🇳","Yudhvir Charak":"🇮🇳","Nishant Sindhu":"🇮🇳","Manav Suthar":"🇮🇳","Shams Mulani":"🇮🇳","Arshin Kulkarni":"🇮🇳","Suryansh Shedge":"🇮🇳","Ajay Mandal":"🇮🇳","Ashutosh Sharma":"🇮🇳","Daksh Kamra":"🇮🇳","Tejasvi Singh":"🇮🇳","Ishan Kishan":"🇮🇳","Dhruv Jurel":"🇮🇳","Jitesh Sharma":"🇮🇳","Abishek Porel":"🇮🇳","Prabhsimran Singh":"🇮🇳","Anuj Rawat":"🇮🇳","Kumar Kushagra":"🇮🇳","Robin Minz":"🇮🇳","Vishnu Vinod":"🇮🇳","Salil Arora":"🇮🇳","MS Dhoni":"🇮🇳","Sanju Samson":"🇮🇳","Rishabh Pant":"🇮🇳","Shivam Dube":"🇮🇳","Urvil Patel":"🇮🇳","Abhishek Sharma":"🇮🇳","Akshat Raghuvanshi":"🇮🇳","Vihaan Malhotra":"🇮🇳","Varun Chakravarthy":"🇮🇳","Suyash Sharma":"🇮🇳","Noor Ahmad":"🇦🇫","Rashid Khan":"🇦🇫","Allah Ghazanfar":"🇦🇫","Azmatullah Omarzai":"🇦🇫","Josh Hazlewood":"🇦🇺","Travis Head":"🇦🇺","Mitchell Marsh":"🇦🇺","Cameron Green":"🇦🇺","Pat Cummins":"🇦🇺","Marcus Stoinis":"🇦🇺","Matthew Short":"🇦🇺","Mitchell Starc":"🇦🇺","Josh Inglis":"🇦🇺","Xavier Bartlett":"🇦🇺","Nathan Ellis":"🇦🇺","Mitchell Owen":"🇦🇺","Jacob Duffy":"🇳🇿","Lockie Ferguson":"🇳🇿","Trent Boult":"🇳🇿","Adam Milne":"🇳🇿","Kyle Jamieson":"🇳🇿","Matt Henry":"🇳🇿","Rachin Ravindra":"🇳🇿","Mitchell Santner":"🇳🇿","Glenn Phillips":"🇳🇿","Tim Seifert":"🇳🇿","Finn Allen":"🇳🇿","Nuwan Thushara":"🇱🇰","Wanindu Hasaranga":"🇱🇰","Matheesha Pathirana":"🇱🇰","Dushmantha Chameera":"🇱🇰","Kamindu Mendis":"🇱🇰","Eshan Malinga":"🇱🇰","Pathum Nissanka":"🇱🇰","Anrich Nortje":"🇿🇦","Kagiso Rabada":"🇿🇦","Kwena Maphaka":"🇿🇦","Nandre Burger":"🇿🇦","Lungi Ngidi":"🇿🇦","Dewald Brevis":"🇿🇦","Aiden Markram":"🇿🇦","Marco Jansen":"🇿🇦","Corbin Bosch":"🇿🇦","Tristan Stubbs":"🇿🇦","Heinrich Klaasen":"🇿🇦","Ryan Rickelton":"🇿🇦","Donovan Ferreira":"🇿🇦","Lhuan-dre Pretorius":"🇿🇦","Matthew Breetzke":"🇿🇦","Quinton de Kock":"🇿🇦","Luke Wood":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jofra Archer":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Brydon Carse":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Ben Dwarshuis":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Sam Curran":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Liam Livingstone":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Will Jacks":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jacob Bethell":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jamie Overton":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jack Edwards":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jos Buttler":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Ben Duckett":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Phil Salt":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Tom Banton":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Jordan Cox":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Cooper Connolly":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Romario Shepherd":"🇯🇲","Rovman Powell":"🇯🇲","Jason Holder":"🇯🇲","Akeal Hosein":"🇹🇹","Shimron Hetmyer":"🇬🇾","Nicholas Pooran":"🇹🇹","Sunil Narine":"🇹🇹","Tim David":"🇸🇬","Mustafizur Rahman":"🇧🇩","David Miller":"🇿🇦","Zak Foulkes":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Blessing Muzarabani":"🇿🇼","Sherfane Rutherford":"🇬🇾","Dasun Shanaka":"🇱🇰","Brijesh Sharma":"🇮🇳","Sushant Mishra":"🇮🇳","Venkatesh Iyer":"🇮🇳","Krains Fuletra":"🇮🇳"
+};
+function flag(n){return FLAGS[n]||"🇮🇳";}
+
+// ── FULL BASE PRICE MAP (from original file) ──
+const BASE_PRICE_STR = {
+  "Jasprit Bumrah":"2 Cr / ₹0.6","Mohd. Shami":"2 Cr / ₹0.6","Kagiso Rabada":"2 Cr / ₹0.6","Jofra Archer":"2 Cr / ₹0.6",
+  "Trent Boult":"2 Cr / ₹0.6","Josh Hazlewood":"2 Cr / ₹0.6","Anrich Nortje":"1.5 Cr / ₹0.5","Mitchell Starc":"2 Cr / ₹0.6",
+  "Matheesha Pathirana":"1.5 Cr / ₹0.5","Arshdeep Singh":"1.5 Cr / ₹0.5","Lockie Ferguson":"1 Cr / ₹0.3",
+  "Bhuvneshwar Kumar":"1 Cr / ₹0.3","Mohd. Siraj":"1.25 Cr / ₹0.4","Deepak Chahar":"1 Cr / ₹0.3","Harshal Patel":"1 Cr / ₹0.3",
+  "Yuzvendra Chahal":"2 Cr / ₹0.6","Kuldeep Yadav":"2 Cr / ₹0.6","Rashid Khan":"2 Cr / ₹0.6","Wanindu Hasaranga":"1.5 Cr / ₹0.5",
+  "Virat Kohli":"2 Cr / ₹0.6","Rohit Sharma":"2 Cr / ₹0.6","Shubman Gill":"2 Cr / ₹0.6","KL Rahul":"2 Cr / ₹0.6",
+  "Suryakumar Yadav":"2 Cr / ₹0.6","Rinku Singh":"1 Cr / ₹0.3","Travis Head":"2 Cr / ₹0.6",
+  "MS Dhoni":"1.5 Cr / ₹0.5","Rishabh Pant":"2 Cr / ₹0.6","Sanju Samson":"2 Cr / ₹0.6","Jos Buttler":"2 Cr / ₹0.6",
+  "Heinrich Klaasen":"2 Cr / ₹0.6","Nicholas Pooran":"2 Cr / ₹0.6","Ishan Kishan":"1.5 Cr / ₹0.5","Phil Salt":"1.5 Cr / ₹0.5",
+  "Hardik Pandya":"2 Cr / ₹0.6","Ravindra Jadeja":"2 Cr / ₹0.6","Axar Patel":"1.5 Cr / ₹0.5","Pat Cummins":"2 Cr / ₹0.6",
+  "Mitchell Marsh":"1.5 Cr / ₹0.5","Sunil Narine":"2 Cr / ₹0.6","Sam Curran":"2 Cr / ₹0.6","Liam Livingstone":"1.5 Cr / ₹0.5",
+  "Yashasvi Jaiswal":"1.5 Cr / ₹0.5","Noor Ahmad":"1.5 Cr / ₹0.5","Allah Ghazanfar":"1 Cr / ₹0.3",
+  "Varun Chakravarthy":"1.5 Cr / ₹0.5","Ravi Bishnoi":"1.25 Cr / ₹0.4","Mustafizur Rahman":"1 Cr / ₹0.3",
+  "Quinton de Kock":"1.5 Cr / ₹0.5","Prabhsimran Singh":"1 Cr / ₹0.3","Finn Allen":"1 Cr / ₹0.3",
+  "Shreyas Iyer":"1.5 Cr / ₹0.5","Ruturaj Gaikwad":"1.5 Cr / ₹0.5","Abhishek Sharma":"1 Cr / ₹0.3",
+  "Sai Sudharsan":"1 Cr / ₹0.3","Devdutt Padikkal":"1 Cr / ₹0.3","Rajat Patidar":"1 Cr / ₹0.3",
+  "Tilak Varma":"1.25 Cr / ₹0.4","Riyan Parag":"1 Cr / ₹0.3","Nitish Kumar Reddy":"1 Cr / ₹0.3",
+  "Marcus Stoinis":"1.25 Cr / ₹0.4","Tim David":"1.25 Cr / ₹0.4","Washington Sundar":"1 Cr / ₹0.3",
+  "Cameron Green":"1.25 Cr / ₹0.4","Rachin Ravindra":"1 Cr / ₹0.3","Glenn Phillips":"1 Cr / ₹0.3",
+  "Will Jacks":"1 Cr / ₹0.3","Jacob Bethell":"1 Cr / ₹0.3","Kamindu Mendis":"1 Cr / ₹0.3",
+  "Azmatullah Omarzai":"1 Cr / ₹0.3","Romario Shepherd":"1 Cr / ₹0.3","Rovman Powell":"1 Cr / ₹0.3",
+  "Aiden Markram":"1.25 Cr / ₹0.4","Marco Jansen":"1 Cr / ₹0.3","Jason Holder":"1 Cr / ₹0.3",
+  "Shivam Dube":"1 Cr / ₹0.3","Krunal Pandya":"1 Cr / ₹0.3","Dhruv Jurel":"1 Cr / ₹0.3",
+  "Jitesh Sharma":"1 Cr / ₹0.3","Ryan Rickelton":"1 Cr / ₹0.3","Josh Inglis":"1 Cr / ₹0.3",
+  "Tristan Stubbs":"1 Cr / ₹0.3","Shardul Thakur":"1 Cr / ₹0.3","Avesh Khan":"1 Cr / ₹0.3",
+  "Prasidh Krishna":"1 Cr / ₹0.3","Khaleel Ahmed":"50 L / ₹0.2","T. Natarajan":"50 L / ₹0.2",
+  "Jaydev Unadkat":"50 L / ₹0.2","Ishant Sharma":"50 L / ₹0.2","Sandeep Sharma":"50 L / ₹0.2",
+  "Mayank Yadav":"1 Cr / ₹0.3","Harshit Rana":"1 Cr / ₹0.3","Mohsin Khan":"50 L / ₹0.2",
+  "Yash Dayal":"50 L / ₹0.2","Tushar Deshpande":"50 L / ₹0.2","Brydon Carse":"50 L / ₹0.2",
+  "Xavier Bartlett":"50 L / ₹0.2","Kwena Maphaka":"30 L / ₹0.1","Nandre Burger":"50 L / ₹0.2",
+  "Lungi Ngidi":"50 L / ₹0.2","Luke Wood":"30 L / ₹0.1","Adam Milne":"30 L / ₹0.1",
+  "Matt Henry":"50 L / ₹0.2","Kyle Jamieson":"50 L / ₹0.2","Nathan Ellis":"30 L / ₹0.1",
+  "Dushmantha Chameera":"50 L / ₹0.2","Nuwan Thushara":"50 L / ₹0.2","Jacob Duffy":"30 L / ₹0.1",
+  "Ben Dwarshuis":"30 L / ₹0.1","Jayant Yadav":"50 L / ₹0.2","Sai Kishore":"50 L / ₹0.2",
+  "Manimaran Siddharth":"30 L / ₹0.1","Rahul Chahar":"50 L / ₹0.2","Shreyas Gopal":"30 L / ₹0.1",
+  "Suyash Sharma":"50 L / ₹0.2","Mayank Markande":"30 L / ₹0.1","Atharva Ankolekar":"30 L / ₹0.1",
+  "Mitchell Santner":"50 L / ₹0.2","Akeal Hosein":"30 L / ₹0.1","Pathum Nissanka":"30 L / ₹0.1",
+  "Prithvi Shaw":"50 L / ₹0.2","Priyansh Arya":"50 L / ₹0.2","Vaibhav Sooryavanshi":"30 L / ₹0.1",
+  "Ayush Mhatre":"30 L / ₹0.1","Matthew Breetzke":"30 L / ₹0.1","Angkrish Raghuvanshi":"30 L / ₹0.1",
+  "David Miller":"1 Cr / ₹0.3","Shimron Hetmyer":"1 Cr / ₹0.3","Dewald Brevis":"1 Cr / ₹0.3",
+  "Karun Nair":"50 L / ₹0.2","Nitish Rana":"50 L / ₹0.2","Sarfaraz Khan":"50 L / ₹0.2",
+  "Shahrukh Khan":"50 L / ₹0.2","Abdul Samad":"50 L / ₹0.2","Ayush Badoni":"30 L / ₹0.1",
+  "Aniket Verma":"30 L / ₹0.1","Himmat Singh":"30 L / ₹0.1","Ajinkya Rahane":"50 L / ₹0.2",
+  "Manish Pandey":"50 L / ₹0.2","Rahul Tripathi":"50 L / ₹0.2","Shashank Singh":"50 L / ₹0.2",
+  "Nehal Wadhera":"30 L / ₹0.1","Abishek Porel":"50 L / ₹0.2","Tim Seifert":"30 L / ₹0.1",
+  "Urvil Patel":"30 L / ₹0.1","Anuj Rawat":"30 L / ₹0.1","Kumar Kushagra":"30 L / ₹0.1",
+  "Robin Minz":"30 L / ₹0.1","Vishnu Vinod":"30 L / ₹0.1","Salil Arora":"30 L / ₹0.1",
+  "Ben Duckett":"50 L / ₹0.2","Tom Banton":"30 L / ₹0.1","Jordan Cox":"30 L / ₹0.1",
+  "Donovan Ferreira":"30 L / ₹0.1","Lhuan-dre Pretorius":"30 L / ₹0.1",
+  "Shahbaz Ahmed":"50 L / ₹0.2","Harpreet Brar":"50 L / ₹0.2","Shivam Mavi":"50 L / ₹0.2",
+  "Anukul Roy":"30 L / ₹0.1","Swapnil Singh":"30 L / ₹0.1","Prince Yadav":"30 L / ₹0.1",
+  "Raj Angad Bawa":"30 L / ₹0.1","Jamie Overton":"30 L / ₹0.1","Jack Edwards":"30 L / ₹0.1",
+  "Yudhvir Charak":"30 L / ₹0.1","Matthew Short":"30 L / ₹0.1","Nishant Sindhu":"30 L / ₹0.1",
+  "Manav Suthar":"30 L / ₹0.1","Shams Mulani":"30 L / ₹0.1","Arshin Kulkarni":"30 L / ₹0.1",
+  "Suryansh Shedge":"30 L / ₹0.1","Cooper Connolly":"30 L / ₹0.1","Ajay Mandal":"30 L / ₹0.1",
+  "Ashutosh Sharma":"30 L / ₹0.1","Ramandeep Singh":"30 L / ₹0.1","Rahul Tewatia":"50 L / ₹0.2",
+  "Corbin Bosch":"30 L / ₹0.1","Mitchell Owen":"30 L / ₹0.1","Kamindu Mendis":"1 Cr / ₹0.3"
+};
+
+function getBasePrice(name){
+  if(BASE_PRICE_STR[name]) return BASE_PRICE_STR[name];
+  const elite=["Sharma","Rahul","Iyer","Pant","Klaasen","Pooran","Cummins","Rabada","Starc","Boult"];
+  const premium=["Singh","Khan","Patel","Yadav","Kumar"];
+  if(elite.some(k=>name.includes(k))) return "1 Cr / ₹0.3";
+  if(premium.some(k=>name.includes(k))) return "50 L / ₹0.2";
+  return "30 L / ₹0.1";
+}
+
+function getBasePriceNum(name){
+  const str=getBasePrice(name);
+  const match=str.match(/₹([\d.]+)/);
+  return match?parseFloat(match[1]):0.1;
+}
+function getPlayerMeta(name){for(const[cat,data]of Object.entries(PLAYER_DATA)){for(const set of data.sets){if(set.players.includes(name))return`${data.label} · ${set.name}`;}}return '';}
+
+const PLAYER_DATA={
+  pace:{label:"Pace Bowlers",icon:"🔥",desc:"Fast bowlers split into elite, domestic, and emerging categories",sets:[
+    {id:"P1",name:"ELITE PACERS — SET A",desc:"Top international pace battery",players:["Jasprit Bumrah","Mohd. Shami","Kagiso Rabada","Jofra Archer","Trent Boult","Josh Hazlewood","Anrich Nortje","Mitchell Starc","Matheesha Pathirana","Mustafizur Rahman","Arshdeep Singh","Lockie Ferguson"]},
+    {id:"P2",name:"ESTABLISHED PACERS — SET B",desc:"Proven IPL workhorses",players:["Bhuvneshwar Kumar","Avesh Khan","Prasidh Krishna","Mohd. Siraj","Deepak Chahar","Shardul Thakur","Harshal Patel","Khaleel Ahmed","T. Natarajan","Jaydev Unadkat","Ishant Sharma","Sandeep Sharma"]},
+    {id:"P3",name:"PROMISING PACERS — SET C",desc:"Young guns with serious pace",players:["Mayank Yadav","Harshit Rana","Mohsin Khan","Yash Dayal","Gurnoor Singh Brar","Tushar Deshpande","Vijaykumar Vyshak","Yash Thakur","Vaibhav Arora","Brydon Carse","Xavier Bartlett","Kwena Maphaka","Nandre Burger","Lungi Ngidi","Luke Wood","Adam Milne","Matt Henry","Kyle Jamieson","Nathan Ellis","Dushmantha Chameera","Nuwan Thushara","Jacob Duffy","Ben Dwarshuis","Prashant Solanki","Akash Deep","Zak Foulkes","Blessing Muzarabani"]},
+    {id:"P4",name:"DOMESTIC PACERS — SET D",desc:"Competitive domestic circuit",players:["Rasikh Dar","Akash Singh","Kartik Tyagi","Umran Malik","Kuldeep Sen","Naman Tiwari","Mukul Choudhary","Harsh Dubey","Amit Kumar","Onkar Tarmale","Prafull Hinge","Shivang Kumar","Smaran Ravichandaran","Harnoor Pannu","Pyla Avinash","Vishal Nishad","Tripurana Vijay","Auqib Dar","Praveen Dubey","Tejasvi Singh","Daksh Kamra","Brijesh Sharma","Sushant Mishra"]},
+    {id:"P5",name:"UNCAPPED PACERS — SET E",desc:"Uncapped & emerging pace prospects",players:["Yash Raj Punja","Arjun Tendulkar","Abhinandan Singh","Kanishk Chouhan","Mangesh Yadav","Satvik Deswal","Ashwani Kumar","Mohd. Izhar","Mohd. Arshad Khan","Prithvi Raj Yarra","Ashok Sharma","Gurjapneet Singh","Aman Khan","Anshul Kamboj","Musheer Khan","Eshan Malinga","Aman Rao Perala","Ravi Singh","Vignesh Puthur"]}
+  ]},
+  spin:{label:"Spinners",icon:"🌀",desc:"Wrist spinners, finger spinners, and mystery bowlers",sets:[
+    {id:"S1",name:"ELITE SPINNERS — SET A",desc:"World-class spin threat",players:["Yuzvendra Chahal","Kuldeep Yadav","Rashid Khan","Noor Ahmad","Varun Chakravarthy","Ravi Bishnoi","Allah Ghazanfar","Wanindu Hasaranga"]},
+    {id:"S2",name:"ESTABLISHED SPINNERS — SET B",desc:"Reliable experienced spin",players:["Jayant Yadav","Sai Kishore","Manimaran Siddharth","Rahul Chahar","Shreyas Gopal","Suyash Sharma","Mayank Markande","Atharva Ankolekar","Kartik Sharma","Mukesh Choudhary"]},
+    {id:"S3",name:"DOMESTIC SPINNERS — SET C",desc:"Domestic spinners with IPL value",players:["Digvesh Rathi","Zeeshan Ansari","Harsh Dubey","Raghu Sharma","Shamsher Singh","Danish Malewar","Ashok Sharma","Vicky Ostwal","Ramakrishna Ghosh","Manav Suthar","Nishant Sindhu","Akeal Hosein","Mitchell Santner","Mukesh Kumar","Pathum Nissanka"]},
+    {id:"S4",name:"UNCAPPED SPINNERS — SET D",desc:"Emerging spin talent",players:["Mohd. Izhar","Sameer Rizvi","Madhav Tiwari","Vipraj Nigam","Sahil Parakh","Pyla Avinash","Smaran Ravichandaran","Ravi Singh","Prashant Veer","Krains Fuletra"]}
+  ]},
+  bat:{label:"Batters",icon:"🏏",desc:"Openers, middle order and finishers",sets:[
+    {id:"B1",name:"MARQUEE BATTERS — SET A",desc:"Premium star batters",players:["Virat Kohli","Rohit Sharma","Shubman Gill","KL Rahul","Yashasvi Jaiswal","Ruturaj Gaikwad","Shreyas Iyer","Travis Head","Abhishek Sharma"]},
+    {id:"B2",name:"OPENERS — SET B",desc:"Specialist T20 openers",players:["Prithvi Shaw","Priyansh Arya","Vaibhav Sooryavanshi","Ayush Mhatre","Sai Sudharsan","Devdutt Padikkal","Rajat Patidar","Matthew Breetzke","Angkrish Raghuvanshi"]},
+    {id:"B3",name:"MIDDLE ORDER — SET C",desc:"Middle-order anchors and finishers",players:["Suryakumar Yadav","Tilak Varma","Rinku Singh","Shashank Singh","Nehal Wadhera","David Miller","Shimron Hetmyer","Dewald Brevis","Karun Nair","Nitish Rana","Sarfaraz Khan","Shahrukh Khan","Abdul Samad","Ayush Badoni","Aniket Verma","Himmat Singh"]},
+    {id:"B4",name:"EXPERIENCED BATTERS — SET D",desc:"Veterans and campaigners",players:["Ajinkya Rahane","Manish Pandey","Rahul Tripathi","Naman Dhir","Mayank Rawat","Shubham Dubey","Sarthak Ranjan","Akshat Raghuvanshi","Vihaan Malhotra"]}
+  ]},
+  wk:{label:"Wicketkeepers",icon:"🧤",desc:"Wicketkeeper-batters — most sought-after role",sets:[
+    {id:"W1",name:"PREMIUM WK-BATTERS — SET A",desc:"Elite global WK options",players:["MS Dhoni","Rishabh Pant","Sanju Samson","Jos Buttler","Quinton de Kock","Heinrich Klaasen","Nicholas Pooran","Ishan Kishan","Phil Salt"]},
+    {id:"W2",name:"ESTABLISHED WK-BATTERS — SET B",desc:"Proven performers",players:["KL Rahul","Prabhsimran Singh","Dhruv Jurel","Jitesh Sharma","Abishek Porel","Finn Allen","Josh Inglis","Ryan Rickelton","Tim Seifert","Urvil Patel"]},
+    {id:"W3",name:"DOMESTIC WK-BATTERS — SET C",desc:"Competitive keeper options",players:["Anuj Rawat","Kumar Kushagra","Robin Minz","Vishnu Vinod","Salil Arora","Tristan Stubbs","Ben Duckett","Tom Banton","Jordan Cox","Donovan Ferreira","Lhuan-dre Pretorius"]}
+  ]},
+  ar:{label:"All-Rounders",icon:"⚡",desc:"Batting all-rounders, bowling all-rounders, genuine all-format players",sets:[
+    {id:"A1",name:"MARQUEE ALL-ROUNDERS — SET A",desc:"Premium names — can win games alone",players:["Hardik Pandya","Ravindra Jadeja","Axar Patel","Pat Cummins","Mitchell Marsh","Sunil Narine","Rashid Khan","Washington Sundar","Sam Curran","Liam Livingstone"]},
+    {id:"A2",name:"BATTING ALL-ROUNDERS — SET B",desc:"Bat-first all-rounders",players:["Riyan Parag","Nitish Kumar Reddy","Marcus Stoinis","Tim David","Will Jacks","Jacob Bethell","Rachin Ravindra","Glenn Phillips","Cameron Green","Romario Shepherd","Rovman Powell","Kamindu Mendis","Azmatullah Omarzai","Mitchell Owen","Shivam Dube","Aiden Markram","Krunal Pandya","Rahul Tewatia","Ramandeep Singh","Corbin Bosch","Sherfane Rutherford"]},
+    {id:"A3",name:"BOWLING ALL-ROUNDERS — SET C",desc:"Bowl-first all-rounders",players:["Shahbaz Ahmed","Wanindu Hasaranga","Harpreet Brar","Shivam Mavi","Anukul Roy","Marco Jansen","Jason Holder","Swapnil Singh","Prince Yadav","Raj Angad Bawa","Jamie Overton","Jack Edwards","Prashant Veer","Yudhvir Charak","Matthew Short","Nishant Sindhu","Manav Suthar","Shams Mulani","Dasun Shanaka"]},
+    {id:"A4",name:"DOMESTIC ALL-ROUNDERS — SET D",desc:"Domestic all-round value",players:["Arshin Kulkarni","Suryansh Shedge","Cooper Connolly","Ajay Mandal","Ashutosh Sharma","Mukul Choudhary","Kartik Sharma","Daksh Kamra","Tejasvi Singh","Venkatesh Iyer"]}
+  ]}
+};
+
+// ═══════════════════════ RENDER PLAYER PANELS ═══════════════════════
+const CAT_COLORS={pace:{t:'#ff6040',b:'rgba(255,80,50,.15)'},spin:{t:'#50a0ff',b:'rgba(80,160,255,.15)'},bat:{t:'#FFB800',b:'rgba(255,184,0,.15)'},wk:{t:'#a050ff',b:'rgba(160,80,255,.15)'},ar:{t:'#32dc96',b:'rgba(50,220,150,.15)'}};
+
+function renderCategoryPanel(catKey){
+  const cat=PLAYER_DATA[catKey];
+  const total=cat.sets.reduce((a,s)=>a+s.players.length,0);
+  document.getElementById(`c-${catKey}`).textContent=total;
+  const c=CAT_COLORS[catKey];
+  let html=`<div class="category-header"><div class="category-icon" style="background:${c.b};font-size:22px">${cat.icon}</div><div><div class="category-title" style="color:${c.t}">${cat.label}</div><div class="category-desc">${cat.desc} · ${cat.sets.length} sets · ${total} players</div></div></div><div class="set-grid">`;
+  cat.sets.forEach(set=>{
+    const soldNames=(auctionState.soldLog||[]).filter(s=>s.sold).map(s=>s.player);
+    const unsoldNames=(auctionState.soldLog||[]).filter(s=>!s.sold).map(s=>s.player);
+    const injuredNames=(injuredPlayers||[]).map(p=>p.name);
+    const processedNames=[...soldNames,...unsoldNames,...injuredNames];
+    const availablePlayers=set.players.filter(p=>!processedNames.includes(p));
+    if(!availablePlayers.length) return;
+    html+=`<div class="set-card" id="card-${set.id}" style="border-color:${c.b}"><div class="set-header" onclick="toggleSet('${set.id}')"><div class="set-title-group"><span class="set-badge" style="background:${c.b};color:${c.t}">${set.id}</span><div><div class="set-name">${set.name}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${set.desc}</div></div></div><div style="display:flex;align-items:center;gap:8px"><div class="set-count-badge">👤 ${availablePlayers.length}</div><span class="chevron">▼</span></div></div><div class="set-body"><div class="player-grid">${availablePlayers.map((p,i)=>`<div class="player-chip"><span class="player-num">${String(i+1).padStart(2,'0')}</span><div style="display:flex;flex-direction:column;min-width:0"><span class="player-name">${p}</span>${isForeign(p)?'<span style="font-size:9px;margin-left:2px;">✈</span>':''}<span style="font-size:9px;color:var(--gold)">${getBasePrice(p)}</span></div><span class="flag">${flag(p)}</span></div>`).join('')}</div></div></div>`;
+  });
+  html+='</div>';
+  document.getElementById(`panel-${catKey}`).innerHTML=html;
+  setTimeout(()=>{const fc=document.getElementById(`card-${cat.sets[0].id}`);if(fc)fc.classList.add('open');},50);
+}
+
+
+// ═══════════════════════ AUCTION LIVE / OFFLINE ═══════════════════════
+async function adminToggleLive(){
+  const newVal = !auctionLive;
+  if(DEMO()){
+    auctionLive = newVal;
+    updateLiveBanner();
+    updateAdminLiveToggle();
+  } else {
+    await db.ref('/auctionLive').set(newVal);
+  }
+  toast(newVal ? '🟢 Auction is now LIVE — teams can see!' : '🔴 Auction marked OFFLINE', newVal ? 'green' : 'red');
+  addConsoleLog('system', newVal ? '🟢 Auction set to LIVE by Admin' : '🔴 Auction set to OFFLINE by Admin', newVal ? 'All teams can now see the auction is active' : 'Auction session marked offline — teams notified');
+}
+
+function updateLiveBanner(){
+  const banner = document.getElementById('auction-live-banner');
+  const txt = document.getElementById('banner-text');
+  if(!banner || !txt) return;
+  if(auctionLive){
+    banner.className = 'banner-live';
+    txt.textContent = 'AUCTION IS LIVE';
+  } else {
+    banner.className = 'banner-offline';
+    txt.textContent = 'AUCTION OFFLINE';
+  }
+}
+
+function updateAdminLiveToggle(){
+  if(!isAdmin) return;
+  const box = document.getElementById('admin-live-toggle-box');
+  const label = document.getElementById('admin-live-status-label');
+  const btn = document.getElementById('admin-live-btn');
+  if(!box || !label || !btn) return;
+  if(auctionLive){
+    box.className = 'admin-live-toggle';
+    label.innerHTML = '<span style="color:var(--green)">● LIVE</span>';
+    btn.textContent = '🔴 GO OFFLINE';
+    btn.className = 'live-toggle-btn go-offline';
+  } else {
+    box.className = 'admin-live-toggle offline';
+    label.innerHTML = '<span style="color:var(--red)">● OFFLINE</span>';
+    btn.textContent = '🟢 GO LIVE';
+    btn.className = 'live-toggle-btn go-live';
+  }
+}
+
+
+// ── helper: get which category key a player belongs to ──
+function getPlayerCategoryKey(name){
+  for(const[key,data] of Object.entries(PLAYER_DATA)){
+    for(const set of data.sets){
+      if(set.players.includes(name)) return key;
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════ UNSOLD PANEL ═══════════════════════
+function renderUnsoldPanel(){
+  const el = document.getElementById('panel-unsold');
+  if(!el) return;
+  // Deduplicate — if a player was unsold then re-auctioned and sold, don't show them here
+  // Build latest status per player
+  const latestStatus={};
+  (auctionState.soldLog||[]).forEach(e=>{ latestStatus[e.player]=e.sold; });
+  const unsoldLog = (auctionState.soldLog||[]).filter(s=>!s.sold && latestStatus[s.player]===false)
+    .filter((e,i,arr)=>arr.findIndex(x=>x.player===e.player)===i); // deduplicate
+  const countEl = document.getElementById('c-unsold');
+  if(countEl) countEl.textContent = unsoldLog.length;
+
+  if(!unsoldLog.length){
+    el.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">🔴</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;">NO UNSOLD PLAYERS YET</div>
+      <div style="font-size:13px;margin-top:8px;">Players marked unsold during auction will appear here.</div>
+    </div>`;
+    return;
+  }
+
+  // Group unsold players by category
+  const groups = {pace:[],spin:[],bat:[],wk:[],ar:[],unknown:[]};
+  const catLabels = {pace:'🔥 Pace Bowlers',spin:'🌀 Spinners',bat:'🏏 Batters',wk:'🧤 Wicketkeepers',ar:'⚡ All-Rounders',unknown:'❓ Other'};
+  const catColors = {pace:'rgba(255,80,50,.15)',spin:'rgba(80,160,255,.15)',bat:'rgba(255,184,0,.15)',wk:'rgba(160,80,255,.15)',ar:'rgba(50,220,150,.15)',unknown:'rgba(255,255,255,.08)'};
+  const catText   = {pace:'#ff6040',spin:'#50a0ff',bat:'#FFB800',wk:'#a050ff',ar:'#32dc96',unknown:'#888'};
+
+  unsoldLog.forEach(entry=>{
+    const key = getPlayerCategoryKey(entry.player)||'unknown';
+    groups[key].push(entry.player);
+  });
+
+  let html = `<div class="category-header">
+    <div class="category-icon" style="background:rgba(255,107,107,.15);font-size:22px">🔴</div>
+    <div>
+      <div class="category-title" style="color:#ff6b6b;">UNSOLD PLAYERS</div>
+      <div class="category-desc">${unsoldLog.length} players unsold · Available for re-auction</div>
+    </div>
+  </div><div class="set-grid">`;
+
+  Object.entries(groups).forEach(([key,players])=>{
+    if(!players.length) return;
+    const label = catLabels[key];
+    const borderColor = catColors[key];
+    const textColor = catText[key];
+    const setId = 'unsold-'+key;
+    html+=`<div class="set-card open" id="card-${setId}" style="border-color:${borderColor}">
+      <div class="set-header" onclick="toggleSet('${setId}')">
+        <div class="set-title-group">
+          <span class="set-badge" style="background:${borderColor};color:${textColor}">UNSOLD</span>
+          <div><div class="set-name">${label}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">Available for re-auction</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="set-count-badge" style="background:rgba(255,107,107,.15);color:#ff6b6b;">🔴 ${players.length}</div>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="set-body"><div class="player-grid">
+        ${players.map((p,i)=>`<div class="player-chip" style="border-color:rgba(255,107,107,.2);">
+          <span class="player-num">${String(i+1).padStart(2,'0')}</span>
+          <div style="display:flex;flex-direction:column;min-width:0;">
+            <span class="player-name">${p}${isForeign(p)?' <span style=\"font-size:9px\">✈</span>':''}</span>
+            <span style="font-size:9px;color:var(--gold);">${getBasePrice(p)}</span>
+          </div>
+          <span class="flag">${flag(p)}</span>
+        </div>`).join('')}
+      </div></div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════ SOLD PLAYERS PANEL ═══════════════════════
+function renderSoldPlayersPanel(){
+  const el = document.getElementById('panel-sold-players');
+  if(!el) return;
+  // Deduplicate — only show latest status per player
+  const latestStatusSold={};
+  (auctionState.soldLog||[]).forEach(e=>{ latestStatusSold[e.player]={sold:e.sold,team:e.team,price:e.price}; });
+  const soldLog = (auctionState.soldLog||[]).filter(s=>s.sold && latestStatusSold[s.player]?.sold===true)
+    .filter((e,i,arr)=>arr.findIndex(x=>x.player===e.player)===i); // deduplicate
+  const countEl = document.getElementById('c-sold-players');
+  if(countEl) countEl.textContent = soldLog.length;
+
+  if(!soldLog.length){
+    el.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;">NO PLAYERS SOLD YET</div>
+      <div style="font-size:13px;margin-top:8px;">Players sold during auction will appear here grouped by team.</div>
+    </div>`;
+    return;
+  }
+
+  // Group by team
+  const byTeam = {};
+  soldLog.forEach(entry=>{
+    if(!byTeam[entry.team]) byTeam[entry.team]=[];
+    byTeam[entry.team].push(entry);
+  });
+
+  let html = `<div class="category-header">
+    <div class="category-icon" style="background:rgba(50,220,150,.15);font-size:22px">✅</div>
+    <div>
+      <div class="category-title" style="color:var(--green);">SOLD PLAYERS</div>
+      <div class="category-desc">${soldLog.length} players sold across ${Object.keys(byTeam).length} teams</div>
+    </div>
+  </div><div class="set-grid">`;
+
+  Object.entries(byTeam).forEach(([teamId, entries])=>{
+    const teamName = teamsData[teamId]?.name || (teamId||'').toUpperCase();
+    const totalSpent = entries.reduce((a,e)=>a+parseFloat(e.price||0),0);
+    const setId = 'sold-'+teamId;
+    html+=`<div class="set-card open" id="card-${setId}" style="border-color:rgba(50,220,150,.2);">
+      <div class="set-header" onclick="toggleSet('${setId}')">
+        <div class="set-title-group">
+          <span class="set-badge" style="background:rgba(50,220,150,.15);color:var(--green);">SOLD</span>
+          <div>
+            <div class="set-name">${teamName}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">${entries.length} players · Total spent: ₹${totalSpent.toFixed(2)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="set-count-badge" style="background:rgba(50,220,150,.15);color:var(--green);">✅ ${entries.length}</div>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="set-body"><div class="player-grid">
+        ${entries.map((e,i)=>`<div class="player-chip" style="border-color:${e.traded?'rgba(255,159,80,.2)':'rgba(50,220,150,.15)'}">
+          <span class="player-num">${String(i+1).padStart(2,'0')}</span>
+          <div style="display:flex;flex-direction:column;min-width:0;">
+            <span class="player-name">${e.player}${isForeign(e.player)?' <span style=\"font-size:9px\">✈</span>':''}</span>
+            <span style="font-size:9px;color:${e.traded?'#ff9f50':'var(--gold)'};font-family:'Orbitron',monospace;">${e.traded?'🔄 TRADED':'₹'+e.price}</span>
+          </div>
+          <span class="flag">${flag(e.player)}</span>
+        </div>`).join('')}
+      </div></div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+
+// ═══════════════════════ FULL SYSTEM RESET ═══════════════════════
+function adminFullReset(){
+  if(!isAdmin){toast('Access denied','red');return;}
+  document.getElementById('reset-purse-val').textContent = TOTAL_PURSE;
+  document.getElementById('reset-modal').style.display = 'flex';
+}
+
+async function confirmFullReset(){
+  if(!isAdmin){toast('Access denied','red');return;}
+  document.getElementById('reset-modal').style.display = 'none';
+
+  // Build fresh teams — keep names and passwords, reset purse/players to the current DEFAULT purse
+  const freshTeams = {};
+  Object.entries(teamsData).forEach(([id, team])=>{
+    freshTeams[id] = {
+      name: team.name || DEFAULT_TEAMS[id]?.name || id.toUpperCase(),
+      pass: team.pass || DEFAULT_TEAMS[id]?.pass || id+'pass',
+      purse: TOTAL_PURSE,
+      startPurse: TOTAL_PURSE,
+      players: [],
+      playerPrices: {}
+    };
+  });
+
+  const freshAuction = {
+    status: 'idle',
+    currentPlayer: null,
+    basePrice: 0,
+    bids: {},
+    soldLog: [],
+    timerEnd: null
+  };
+
+  if(DEMO()){
+    teamsData = freshTeams;
+    auctionState = freshAuction;
+    tradesData = {};
+    tradeWindowOpen = false;
+    auctionLive = false;
+    consoleLogs = [];
+    refreshAll();
+    updateLiveBanner();
+    updateAdminLiveToggle();
+    updateAdminTradePanel();
+  } else {
+    await db.ref('/teams').set(freshTeams);
+    await db.ref('/auction').set(freshAuction);
+    await db.ref('/trades').remove();
+    await db.ref('/tradeWindow').set(false);
+    await db.ref('/auctionLive').set(false);
+    await db.ref('/injured').remove();
+    await db.ref('/consoleLogs').remove();
+  }
+  if(DEMO()) injuredPlayers=[];
+
+  // Log the reset (after clearing, so this is the first new entry)
+  addConsoleLog('system',
+    '⚠️ FULL SYSTEM RESET performed by Admin',
+    `All squads cleared · All wallets reset to ₹${TOTAL_PURSE} · All auction history wiped · Fresh start`
+  );
+
+  toast('✅ Full system reset complete — everything is fresh!', 'green');
+}
+
+
+// ═══════════════════════ END SEASON ═══════════════════════
+let seasonEnded = false;
+
+function applySeasonEndedUI(){
+  seasonEnded = true;
+  // Show permanent banner
+  const banner = document.getElementById('end-season-banner');
+  if(banner) banner.classList.add('active');
+  // Show watermark
+  const wm = document.getElementById('season-watermark');
+  if(wm) wm.style.display = 'flex';
+  // Hide auction live banner (season supersedes it)
+  const lb = document.getElementById('auction-live-banner');
+  if(lb) lb.style.display = 'none';
+  // Hide ALL interactive admin controls
+  const adminPanel = document.getElementById('admin-panel');
+  if(adminPanel) adminPanel.style.display = 'none';
+  const adminTradeBox = document.getElementById('admin-trade-box');
+  if(adminTradeBox) adminTradeBox.style.display = 'none';
+  const squadMgr = document.getElementById('squad-manager-section');
+  if(squadMgr) squadMgr.style.display = 'none';
+  const manageSec = document.getElementById('manage-teams-section');
+  if(manageSec) manageSec.style.display = 'none';
+  // Disable all bid buttons
+  document.querySelectorAll('.bid-btn').forEach(b=>{ b.disabled=true; b.style.opacity='.2'; });
+  // Hide bid section
+  const bidSec = document.getElementById('bid-section');
+  if(bidSec) bidSec.style.display = 'none';
+  // Hide trade tab for non-admins
+  const tradeTab = document.getElementById('trade-tab-btn');
+  if(tradeTab) tradeTab.style.display = 'none';
+  // Stop any running timer
+  stopTimer();
+}
+
+function adminEndSeasonPrompt(){
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  if(seasonEnded){ toast('Season has already ended','red'); return; }
+  const modal = document.getElementById('end-season-modal');
+  const input = document.getElementById('end-season-confirm-input');
+  const btn   = document.getElementById('end-season-confirm-btn');
+  input.value = '';
+  btn.disabled = true;
+  btn.style.opacity = '.4';
+  modal.style.display = 'flex';
+  setTimeout(()=>input.focus(), 100);
+  input.oninput = ()=>{
+    const match = input.value.trim().toUpperCase() === 'END SEASON';
+    btn.disabled = !match;
+    btn.style.opacity = match ? '1' : '.4';
+  };
+}
+
+async function confirmEndSeason(){
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  const input = document.getElementById('end-season-confirm-input');
+  if(input.value.trim().toUpperCase() !== 'END SEASON'){ toast('Type END SEASON to confirm','red'); return; }
+  document.getElementById('end-season-modal').style.display = 'none';
+  if(DEMO()){
+    auctionState = {...auctionState, status:'idle', seasonEnded:true};
+  } else {
+    try{
+      await db.ref('/auction/seasonEnded').set(true);
+      await db.ref('/auction/status').set('idle');
+      await db.ref('/tradeWindow').set(false);
+      await db.ref('/auctionLive').set(false);
+    } catch(e){ toast('Failed to end season — try again','red'); return; }
+  }
+  addConsoleLog('system','🏁 SEASON ENDED by Admin','All users are now in read-only mode. No further changes can be made.');
+  applySeasonEndedUI();
+  toast('🏁 Season has been ended. Platform is now read-only.','green');
+}
+
+
+// ═══════════════════════ ALL SQUADS PANEL (Admin only) ═══════════════════════
+function renderAllSquadsPanel(){
+  const el = document.getElementById('panel-allsquads');
+  if(!el) return;
+  if(!isAdmin){ el.innerHTML=''; return; }
+  const teams = teamsData;
+  const totalTeams = Object.keys(teams).length;
+  const totalSold = Object.values(teams).reduce((a,t)=>a+(t.players||[]).length,0);
+
+  let html = `<div class="category-header">
+    <div class="category-icon" style="background:rgba(160,80,255,.15);font-size:22px">👁</div>
+    <div>
+      <div class="category-title" style="color:#a050ff;">ALL SQUADS OVERVIEW</div>
+      <div class="category-desc">${totalTeams} teams · ${totalSold} players bought · Admin view only</div>
+    </div>
+  </div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:4px 0;">`;
+
+  Object.entries(teams).forEach(([id, team])=>{
+    const players = team.players||[];
+    const purse = team.purse ?? TOTAL_PURSE;
+    const foreignCount = players.filter(p=>isForeign(p)).length;
+    const domCount = players.length - foreignCount;
+    const purseUsed = Math.max(0, teamStart(team) - purse);
+    const pct = pursePct(team);
+
+    // Group players by category
+    const byRole = {bat:[],wk:[],ar:[],pace:[],spin:[],unknown:[]};
+    const roleIcon = {bat:'🏏',wk:'🧤',ar:'⚡',pace:'🔥',spin:'🌀',unknown:'❓'};
+    players.forEach(p=>{
+      const key = getPlayerCategoryKey(p)||'unknown';
+      byRole[key].push(p);
+    });
+
+    html += `<div style="background:var(--card-bg);border:1px solid rgba(160,80,255,.2);border-radius:14px;padding:18px;position:relative;">
+      <!-- Team Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#a050ff;">${team.name||id.toUpperCase()}</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">${id.toUpperCase()}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:var(--gold);">₹${purse.toFixed(2)}</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PURSE LEFT</div>
+        </div>
+      </div>
+
+      <!-- Purse bar -->
+      <div style="background:rgba(255,255,255,.06);border-radius:4px;height:4px;margin-bottom:12px;">
+        <div style="background:${pct<25?'var(--red)':pct<50?'var(--gold)':'var(--green)'};height:4px;border-radius:4px;width:${pct}%;transition:width .3s;"></div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="background:var(--surface);border-radius:8px;padding:6px 12px;font-size:11px;text-align:center;">
+          <div style="font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--text);">${players.length}<span style="font-size:9px;color:var(--muted);">/${MAX_SQUAD}</span></div>
+          <div style="color:var(--muted);letter-spacing:1px;">PLAYERS</div>
+        </div>
+        <div style="background:var(--surface);border-radius:8px;padding:6px 12px;font-size:11px;text-align:center;">
+          <div style="font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--blue);">${foreignCount}<span style="font-size:9px;color:var(--muted);">/${MAX_FOREIGN}</span></div>
+          <div style="color:var(--muted);letter-spacing:1px;">FOREIGN</div>
+        </div>
+        <div style="background:var(--surface);border-radius:8px;padding:6px 12px;font-size:11px;text-align:center;">
+          <div style="font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--green);">₹${purseUsed.toFixed(2)}</div>
+          <div style="color:var(--muted);letter-spacing:1px;">SPENT</div>
+        </div>
+      </div>
+
+      <!-- Players by role with remove buttons -->
+      ${players.length ? Object.entries(byRole).filter(([,arr])=>arr.length).map(([role,arr])=>`
+        <div style="margin-bottom:8px;">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">${roleIcon[role]} ${role.toUpperCase()}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${arr.map(p=>{
+              const price = getPriceFromPrices(team.playerPrices||{},p);
+              const isTraded = (auctionState.soldLog||[]).find(e=>e.player===p&&e.traded);
+              const safeP = p.replace(/'/g,"&apos;");
+              return `<div style="background:var(--surface);border:1px solid ${isForeign(p)?'rgba(80,160,255,.2)':'rgba(255,255,255,.07)'};border-radius:7px;padding:5px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+                <span>${flag(p)}</span>
+                <span style="font-weight:600;flex:1;">${p}</span>
+                ${isForeign(p)?'<span style="font-size:9px;color:var(--blue);">✈</span>':''}
+                ${isTraded?'<span style="font-size:9px;color:#ff9f50;">🔄</span>':''}
+                ${price?`<span style="font-size:9px;color:var(--gold);font-family:'Orbitron',monospace;">₹${price}</span>`:''}
+                <button onclick="quickRemovePlayer('${id}','${safeP}')" style="background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;letter-spacing:1px;font-family:'Rajdhani',sans-serif;font-weight:700;">✕ REMOVE</button>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`).join('')
+      : `<div style="color:var(--muted);font-size:12px;padding:8px 0;text-align:center;">No players yet</div>`}
+    </div>`;
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// Quick remove from All Squads panel (opens the injured / re-auction modal)
+function quickRemovePlayer(teamId, playerName){
+  playerName = playerName.replace(/&apos;/g,"'");
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  openRemoveModal(teamId, playerName, 'allsquads');
+}
+
+
+// Force re-read all data from Firebase and refresh UI
+async function adminForceSync(){
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  if(DEMO()){ refreshAll(); toast('Synced (demo mode)','green'); return; }
+  try{
+    toast('Syncing & repairing data...','green');
+    const [aSnap, tSnap] = await Promise.all([
+      db.ref('/auction').get(),
+      db.ref('/teams').get()
+    ]);
+    if(aSnap.exists()){
+      auctionState = aSnap.val()||{status:'idle',currentPlayer:null,basePrice:0,bids:{},soldLog:[],timerEnd:null};
+      if(auctionState.soldLog && !Array.isArray(auctionState.soldLog))
+        auctionState.soldLog = Object.values(auctionState.soldLog);
+    }
+    if(tSnap.exists()){
+      const fresh = tSnap.val()||{};
+      const repairUpdates = {};
+      let needsRepair = false;
+      Object.keys(fresh).forEach(tid=>{
+        const t = fresh[tid];
+        // Fix players array
+        if(t.players && !Array.isArray(t.players)){
+          fresh[tid].players = Object.values(t.players);
+          repairUpdates['/teams/'+tid+'/players'] = fresh[tid].players;
+          needsRepair = true;
+        }
+        if(!fresh[tid].players) fresh[tid].players = [];
+        // Fix playerPrices
+        if(t.playerPrices && Array.isArray(t.playerPrices)){
+          fresh[tid].playerPrices = {};
+          repairUpdates['/teams/'+tid+'/playerPrices'] = {};
+          needsRepair = true;
+        }
+        if(!fresh[tid].playerPrices) fresh[tid].playerPrices = {};
+        if(fresh[tid].purse === undefined) fresh[tid].purse = TOTAL_PURSE;
+      });
+      teamsData = fresh;
+      // Write repairs back to Firebase if needed
+      if(needsRepair && Object.keys(repairUpdates).length){
+        await db.ref('/').update(repairUpdates);
+        addConsoleLog('system','🔧 Squad data repaired by Force Sync','Firebase array/object corruption fixed automatically');
+      }
+    }
+    refreshAll();
+    addConsoleLog('system','🔃 Force sync performed by Admin','All data re-fetched and repaired from Firebase');
+    toast('✅ Sync & repair complete!','green');
+  } catch(e){
+    toast('⚠️ Sync failed — check internet connection','red');
+    console.error('forceSync error:', e);
+  }
+}
+
+
+// ═══════════════════════ REPAIR SQUADS ═══════════════════════
+async function adminRepairSquads(){
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  if(DEMO()){ toast('Not available in demo mode','red'); return; }
+  if(!db){ if(!initFirebase()){ toast('Database not connected','red'); return; } }
+  toast('🔧 Checking squads...','green');
+  try{
+    const [tSnap, aSnap] = await Promise.all([db.ref('/teams').get(), db.ref('/auction').get()]);
+    if(!tSnap.exists()){ toast('No team data found','red'); return; }
+    const teams = tSnap.val()||{};
+    const auction = aSnap.val()||{};
+    const soldLog = auction.soldLog ? (Array.isArray(auction.soldLog)?auction.soldLog:Object.values(auction.soldLog)) : [];
+    
+    const updates = {};
+    let repairCount = 0;
+
+    // Fix arrays first
+    Object.keys(teams).forEach(tid=>{
+      if(teams[tid].players && !Array.isArray(teams[tid].players)){
+        teams[tid].players = Object.values(teams[tid].players);
+        updates['/teams/'+tid+'/players'] = teams[tid].players;
+        repairCount++;
+      }
+      if(!teams[tid].players) teams[tid].players = [];
+      if(!teams[tid].playerPrices) teams[tid].playerPrices = {};
+    });
+
+    // Cross-check soldLog — make sure every sold player is in the right team
+    // Build latest status map (last entry per player wins)
+    const latestSold = {};
+    soldLog.forEach(e=>{ if(e.player) latestSold[e.player]=e; });
+
+    Object.values(latestSold).filter(e=>e.sold&&e.team).forEach(entry=>{
+      const team = teams[entry.team];
+      if(!team) return;
+      if(!team.players) team.players=[];
+      if(!team.playerPrices) team.playerPrices={};
+      if(!team.players.includes(entry.player)){
+        team.players.push(entry.player);
+        repairCount++;
+        addConsoleLog('system', `🔧 Repaired: ${entry.player} restored to ${team.name||entry.team}`, `Player was in soldLog but missing from squad — auto-fixed`);
+      }
+      // Always ensure price is stored with safe key
+      if(entry.price){
+        team.playerPrices[fbKey(entry.player)] = entry.price;
+        // Remove old dotted key if exists
+        if(team.playerPrices[entry.player] !== undefined && entry.player !== fbKey(entry.player)){
+          delete team.playerPrices[entry.player];
+        }
+      }
+      updates['/teams/'+entry.team+'/players'] = team.players;
+      updates['/teams/'+entry.team+'/playerPrices'] = team.playerPrices;
+    });
+
+    // Sanitize ALL existing playerPrices keys across all teams (fix dots in keys)
+    Object.keys(teams).forEach(tid=>{
+      const prices = teams[tid].playerPrices||{};
+      const hasBadKey = Object.keys(prices).some(k=>k!==fbKey(k));
+      if(hasBadKey){
+        const safePrices = {};
+        Object.entries(prices).forEach(([k,v])=>{ safePrices[fbKey(fbKeyDecode(k))]=v; });
+        teams[tid].playerPrices = safePrices;
+        updates['/teams/'+tid+'/playerPrices'] = safePrices;
+        repairCount++;
+      }
+    });
+
+    if(Object.keys(updates).length){
+      await db.ref('/').update(updates);
+      toast(`✅ Repaired ${repairCount} issue(s)! Squad data fixed.`,'green');
+    } else {
+      toast('✅ All squads look correct — no repairs needed!','green');
+    }
+    // Force refresh
+    const newTSnap = await db.ref('/teams').get();
+    if(newTSnap.exists()) teamsData = newTSnap.val()||{};
+    refreshAll();
+  } catch(e){
+    toast('⚠️ Repair failed: '+e.message,'red');
+    console.error('adminRepairSquads error:',e);
+  }
+}
+
+
+// Sanitize player name for use as Firebase key (no . # $ / [ ])
+function fbKey(name){ return name.replace(/\./g,'%2E').replace(/#/g,'%23').replace(/\$/g,'%24').replace(/\//g,'%2F').replace(/\[/g,'%5B').replace(/\]/g,'%5D'); }
+function fbKeyDecode(key){ return key.replace(/%2E/g,'.').replace(/%23/g,'#').replace(/%24/g,'$').replace(/%2F/g,'/').replace(/%5B/g,'[').replace(/%5D/g,']'); }
+
+// Safe playerPrices getter/setter
+function getPriceFromPrices(prices, player){ return prices[player] || prices[fbKey(player)] || null; }
+function buildSafePrices(players, prices){
+  const safe = {};
+  players.forEach(p=>{ const v = getPriceFromPrices(prices,p); if(v) safe[fbKey(p)]=v; });
+  return safe;
+}
+function readSafePrices(prices){
+  // Decode all keys back to player names
+  const decoded = {};
+  Object.entries(prices||{}).forEach(([k,v])=>{ decoded[fbKeyDecode(k)]=v; });
+  return decoded;
+}
+
+
+// ═══════════════════════ INJURED SYSTEM ═══════════════════════
+function openRemoveModal(teamId, playerName, source){
+  if(!isAdmin){ toast('Access denied','red'); return; }
+  pendingRemove = {teamId, playerName, source};
+  const team = teamsData[teamId]||{};
+  const price = getPriceFromPrices(team.playerPrices||{}, playerName);
+  document.getElementById('remove-modal-title').textContent = playerName.toUpperCase();
+  document.getElementById('remove-modal-sub').textContent = 
+    `${team.name||teamId} · Bought at ₹${price||'?'} · Choose what happens next`;
+  document.getElementById('remove-modal').style.display='flex';
+}
+
+function closeRemoveModal(){
+  document.getElementById('remove-modal').style.display='none';
+  pendingRemove={teamId:null,playerName:null,source:null};
+}
+
+async function confirmRemove(action){
+  const tId = pendingRemove.teamId;
+  const pName = pendingRemove.playerName;
+  closeRemoveModal();
+  await executeRemove(tId, pName, action);
+}
+
+async function executeRemove(teamId, playerName, action){
+  if(!teamId||!playerName) return;
+  const team = teamsData[teamId]||{};
+  const teamName = team.name||teamId;
+  const newPlayers = (team.players||[]).filter(p=>p!==playerName);
+  const newPrices = {...(team.playerPrices||{})};
+  // Try playerPrices first, then fall back to soldLog entry as source of truth
+  const removedPrice = getPriceFromPrices(newPrices, playerName)
+    || (auctionState.soldLog||[]).find(e=>e.player===playerName&&e.team===teamId)?.price
+    || null;
+  const refundAmt = removedPrice ? parseFloat(removedPrice) : 0;
+  const oldPurse = team.purse ?? TOTAL_PURSE;
+  const newPurse = +((oldPurse) + refundAmt).toFixed(2);
+  delete newPrices[playerName]; delete newPrices[fbKey(playerName)];
+  const newSquadSize = newPlayers.length;
+  const newForeignCount = newPlayers.filter(p=>isForeign(p)).length;
+  const playerMeta = getPlayerMeta(playerName);
+
+  // Remove player from soldLog so they no longer appear as sold to that team
+  const updatedSoldLog = (auctionState.soldLog||[]).filter(e => e.player !== playerName);
+
+  if(DEMO()){
+    teamsData[teamId].players = newPlayers;
+    teamsData[teamId].playerPrices = newPrices;
+    teamsData[teamId].purse = newPurse;
+    auctionState = {...auctionState, soldLog: updatedSoldLog};
+    if(action==='injured'){
+      injuredPlayers.push({name:playerName,team:teamId,teamName,price:removedPrice||'0',role:playerMeta});
+    }
+    refreshAll();
+  } else {
+    try{
+      const updates = {};
+      updates[`/teams/${teamId}/players`] = newPlayers;
+      updates[`/teams/${teamId}/playerPrices`] = newPrices;
+      updates[`/teams/${teamId}/purse`] = newPurse;
+      updates['/auction/soldLog'] = updatedSoldLog;
+      if(action==='injured'){
+        const newInjured = [...injuredPlayers, {name:playerName,team:teamId,teamName,price:removedPrice||'0',role:playerMeta}];
+        updates['/injured'] = newInjured;
+      }
+      await db.ref('/').update(updates);
+    } catch(e){
+      toast('Remove failed: '+e.message,'red'); return;
+    }
+  }
+
+  const actionLabel = action==='injured' ? '🚑 Marked as INJURED' : '🔄 Released for RE-AUCTION';
+  addConsoleLog('remove',
+    `${flag(playerName)} ${playerName} removed from ${teamName} by Admin`,
+    `${actionLabel} · Bought at ₹${refundAmt.toFixed(2)} · 💰 Refunded ₹${refundAmt.toFixed(2)} · Purse: ₹${oldPurse.toFixed(2)} → ₹${newPurse.toFixed(2)} · Squad now: ${newSquadSize}/${MAX_SQUAD}`
+  );
+  if(action==='injured'){
+    toast(`${playerName} marked injured & ₹${refundAmt.toFixed(2)} refunded`,'red');
+  } else {
+    toast(`${playerName} released for re-auction & ₹${refundAmt.toFixed(2)} refunded`,'green');
+  }
+}
+
+function renderInjuredPanel(){
+  const el = document.getElementById('panel-injured');
+  if(!el) return;
+  const count = injuredPlayers.length;
+  document.getElementById('c-injured').textContent = count||'';
+
+  let html = `<div class="category-header">
+    <div class="category-icon" style="background:rgba(255,159,80,.15);font-size:22px">🚑</div>
+    <div>
+      <div class="category-title" style="color:#ff9f50;">INJURED PLAYERS</div>
+      <div class="category-desc">${count} player${count!==1?'s':''} currently injured · Not available for auction</div>
+    </div>
+  </div>`;
+
+  if(!count){
+    html+=`<div style="text-align:center;padding:40px;color:var(--muted);"><div style="font-size:44px;margin-bottom:12px;">🏥</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;">NO INJURED PLAYERS</div></div>`;
+  } else {
+    html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
+    injuredPlayers.forEach((p,i)=>{
+      const teamName = teamsData[p.team]?.name || p.teamName || p.team;
+      html+=`<div style="background:var(--card-bg);border:1px solid rgba(255,159,80,.2);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">${flag(p.name)}</span>
+        <div style="flex:1;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;">${p.name}${isForeign(p.name)?' <span style="font-size:10px;color:var(--blue);">✈</span>':''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.role||''} · Was in ${teamName} · Bought at ₹${p.price}</div>
+        </div>
+        <span style="background:rgba(255,159,80,.15);border:1px solid rgba(255,159,80,.3);color:#ff9f50;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:1px;">INJURED</span>
+        ${isAdmin?`<button onclick="removeFromInjured(${i})" style="background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:700;">✕ REMOVE</button>`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  el.innerHTML=html;
+}
+
+async function removeFromInjured(index){
+  if(!isAdmin) return;
+  const p = injuredPlayers[index];
+  if(!p) return;
+  if(!confirm(`Remove ${p.name} from injured list?`)) return;
+  const newInjured = injuredPlayers.filter((_,i)=>i!==index);
+  if(DEMO()){
+    injuredPlayers = newInjured;
+    renderInjuredPanel();
+  } else {
+    await db.ref('/injured').set(newInjured.length?newInjured:[]);
+  }
+  toast(p.name+' removed from injured list','green');
+}
+
+function toggleSet(id){document.getElementById(`card-${id}`).classList.toggle('open');}
+
+// ═══════════════════════ CONSOLE LOG ═══════════════════════
+// consoleLogs stored in Firebase at /consoleLogs or in-memory for demo
+let consoleLogs = [];
+
+function addConsoleLog(type, msg, details){
+  const entry = {
+    type,     // 'remove' | 'wallet' | 'sold' | 'trade'
+    msg,
+    details: details||'',
+    timestamp: Date.now(),
+    by: 'ADMIN'
+  };
+  if(DEMO()){
+    consoleLogs.unshift(entry);
+    renderConsoleLogs();
+  } else {
+    db.ref('/consoleLogs').push(entry);
+  }
+}
+
+function setupConsoleListener(){
+  if(DEMO()) return;
+  const cRef = db.ref('/consoleLogs');
+  const cOff = cRef.orderByChild('timestamp').limitToLast(500).on('value', snap=>{
+    consoleLogs = [];
+    snap.forEach(child=>consoleLogs.unshift(child.val()));
+    renderConsoleLogs();
+  });
+  listeners.push(()=>cRef.off('value',cOff));
+}
+
+function renderConsoleLogs(){
+  const el = document.getElementById('console-content');
+  if(!el) return;
+
+  const iconMap = {remove:'🗑️',wallet:'💰',sold:'🏏',trade:'🔄',unsold:'❌',add:'➕',system:'⚙️',announce:'🎤',bid:'💸'};
+  const tagMap  = {remove:'REMOVE',wallet:'WALLET',sold:'SOLD',trade:'TRADE',unsold:'UNSOLD',add:'ADDED',system:'SYSTEM',announce:'ANNOUNCE',bid:'BID'};
+  const tagClass= {remove:'tag-remove',wallet:'tag-wallet',sold:'tag-sold',trade:'tag-trade',unsold:'tag-remove',add:'tag-sold',system:'tag-wallet',announce:'tag-sold',bid:'tag-trade'};
+
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#c084fc;">📋 ADMIN CONSOLE</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;">Permanent log of all admin actions. Read-only. Cannot be edited or deleted by anyone.</div>
+  </div>`;
+
+  if(!consoleLogs.length){
+    html+=`<div style="text-align:center;padding:40px;color:var(--muted);">
+      <div style="font-size:40px;margin-bottom:10px;">📋</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;">NO LOGS YET</div>
+      <div style="font-size:13px;margin-top:6px;">Admin actions will appear here.</div>
+    </div>`;
+  } else {
+    html+=`<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+      <div id="console-log-list">`;
+    consoleLogs.forEach(entry=>{
+      const d = new Date(entry.timestamp);
+      const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+      const icon = iconMap[entry.type]||'📌';
+      const tClass = tagClass[entry.type]||'tag-sold';
+      const tLabel = tagMap[entry.type]||entry.type.toUpperCase();
+      html+=`<div class="console-row">
+        <div class="console-time">${dateStr}<br>${timeStr}</div>
+        <div class="console-icon">${icon}</div>
+        <div class="console-msg">
+          ${entry.msg}
+          <span class="console-tag ${tClass}">${tLabel}</span>
+          ${entry.details?`<div style="font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:0.5px;">${entry.details}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ═══════════════════════ SQUAD MANAGER (Admin only) ═══════════════════════
+function renderSquadManager(){
+  const el = document.getElementById('squad-manager-list');
+  if(!el) return;
+  const teams = teamsData;
+  let html = '';
+  Object.entries(teams).forEach(([id,team])=>{
+    const players = team.players||[];
+    const purse = team.purse ?? TOTAL_PURSE;
+    const foreignCount = players.filter(p=>isForeign(p)).length;
+    html+=`<div class="admin-squad-team">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div class="admin-squad-team-name">${team.name||id.toUpperCase()}
+          <span style="font-size:12px;color:var(--muted);font-family:'Rajdhani',sans-serif;">
+            · ${players.length}/${MAX_SQUAD} players · ${foreignCount}/${MAX_FOREIGN} foreign · ₹${purse.toFixed(2)}
+          </span>
+        </div>
+      </div>`;
+    // Current squad with remove buttons
+    if(players.length){
+      players.forEach(p=>{
+        const price = getPriceFromPrices(team.playerPrices||{},p);
+        const safeP = p.replace(/'/g,'&apos;');
+        html+=`<div class="admin-player-row">
+          <span style="font-size:13px;">${flag(p)}</span>
+          <span style="font-size:13px;font-weight:600;flex:1;">${p}</span>
+          ${isForeign(p)?'<span class="foreign-badge">INT</span>':'<span class="india-badge">IND</span>'}
+          ${price?`<span style="font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);">₹${price}</span>`:'<span style="font-size:10px;color:var(--muted);">no price</span>'}
+          <button class="admin-remove-btn" onclick="adminRemovePlayer('${id}','${safeP}')">🗑 REMOVE</button>
+        </div>`;
+      });
+    } else {
+      html+=`<div style="color:var(--muted);font-size:12px;padding:6px 0;">No players in this squad.</div>`;
+    }
+    // Add Player section
+    html+=`<div style="border-top:1px solid rgba(255,255,255,.06);margin-top:10px;padding-top:10px;">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--green);margin-bottom:7px;">➕ ADD PLAYER TO SQUAD</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select class="admin-select" id="addp-cat-${id}" style="width:150px;margin-bottom:0;" onchange="populateAddPlayerList('${id}')">
+          <option value="">— Category —</option>
+          <option value="pace">🔥 Pace</option>
+          <option value="spin">🌀 Spin</option>
+          <option value="bat">🏏 Bat</option>
+          <option value="wk">🧤 WK</option>
+          <option value="ar">⚡ AR</option>
+        </select>
+        <select class="admin-select" id="addp-player-${id}" style="width:200px;margin-bottom:0;">
+          <option value="">— Select Player —</option>
+        </select>
+        <input class="wallet-adj-input" id="addp-price-${id}" type="number" step="0.05" min="0" placeholder="Price (₹)" style="width:100px;"/>
+        <button class="wallet-add-btn" style="white-space:nowrap;" onclick="adminAddPlayer('${id}')">➕ ADD</button>
+      </div>
+    </div>`;
+    // Wallet adjustment
+    html+=`<div style="border-top:1px solid rgba(255,255,255,.06);margin-top:10px;padding-top:10px;">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;">💰 WALLET ADJUSTMENT</div>
+      <div class="wallet-adj-row">
+        <input class="wallet-adj-input" id="wadj-${id}" type="number" step="0.1" min="0" placeholder="Amount"/>
+        <button class="wallet-add-btn" onclick="adminAdjustWallet('${id}','add')">+ ADD</button>
+        <button class="wallet-sub-btn" onclick="adminAdjustWallet('${id}','sub')">− DEDUCT</button>
+        <button class="wallet-set-btn" onclick="adminAdjustWallet('${id}','set')">= SET</button>
+        <span style="font-size:11px;color:var(--muted);">Current: <span style="color:var(--gold);font-family:'Orbitron',monospace;">₹${purse.toFixed(2)}</span></span>
+      </div>
+    </div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function populateAddPlayerList(teamId){
+  const catKey = document.getElementById('addp-cat-'+teamId)?.value;
+  const sel = document.getElementById('addp-player-'+teamId);
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Select Player —</option>';
+  if(!catKey) return;
+  // Get players already in THIS team's squad (can't add duplicates)
+  const thisTeamPlayers = teamsData[teamId]?.players || [];
+  const cat = PLAYER_DATA[catKey];
+  cat.sets.forEach(set=>{
+    const og = document.createElement('optgroup');
+    og.label = set.name;
+    set.players.forEach(p=>{
+      // Only block if already in THIS team — admin can add from any other team or unsold pool
+      const alreadyInTeam = thisTeamPlayers.includes(p);
+      const o = document.createElement('option');
+      o.value = p;
+      // Show which team owns the player if already sold elsewhere
+      const ownerTeam = Object.entries(teamsData).find(([tid,t])=>tid!==teamId&&(t.players||[]).includes(p));
+      const ownerLabel = ownerTeam ? ` (${ownerTeam[1].name||ownerTeam[0]})` : '';
+      o.textContent = p + (isForeign(p) ? ' ✈' : '') + ownerLabel;
+      if(alreadyInTeam) o.disabled = true;
+      og.appendChild(o);
+    });
+    if(og.children.length) sel.appendChild(og);
+  });
+  sel.onchange = ()=>{
+    const p = sel.value;
+    if(p){ const pi = document.getElementById('addp-price-'+teamId); if(pi) pi.value = getBasePriceNum(p); }
+  };
+}
+
+async function adminAddPlayer(teamId){
+  const playerSel = document.getElementById('addp-player-'+teamId);
+  const priceInput = document.getElementById('addp-price-'+teamId);
+  const player = playerSel?.value;
+  const price = parseFloat(priceInput?.value);
+  if(!player){ toast('Select a player to add','red'); return; }
+  if(isNaN(price)||price<0){ toast('Enter a valid price (0 is allowed)','red'); return; }
+  const team = teamsData[teamId]||{};
+  const teamName = team.name||teamId;
+  const players = team.players||[];
+  const foreignCount = players.filter(p=>isForeign(p)).length;
+  if(players.includes(player)){ toast(player+' is already in '+teamName,'red'); return; }
+  // Block if player already in another team
+  const otherOwner = Object.entries(teamsData).find(([tid,t])=>tid!==teamId&&(t.players||[]).includes(player));
+  if(otherOwner){ toast(player+' is already in '+(otherOwner[1].name||otherOwner[0])+'. Cannot add to two teams!','red'); return; }
+  if(players.length>=MAX_SQUAD){ toast(teamName+' squad is full (25/25)','red'); return; }
+  if(isForeign(player)&&foreignCount>=MAX_FOREIGN){ toast('Foreign limit reached for '+teamName+' (8/8)','red'); return; }
+  const newPlayers = [...players, player];
+  const newPrices = {...(team.playerPrices||{}), [fbKey(player)]: price.toFixed(2)};
+  const newSquadSize = newPlayers.length;
+  const newForeignCount = newPlayers.filter(p=>isForeign(p)).length;
+  const playerMeta = getPlayerMeta(player);
+  const oldPurse = team.purse ?? TOTAL_PURSE;
+  const newPurse = +((oldPurse) - price).toFixed(2);
+  if(DEMO()){
+    teamsData[teamId].players = newPlayers;
+    teamsData[teamId].playerPrices = newPrices;
+    teamsData[teamId].purse = newPurse;
+    refreshAll();
+  } else {
+    // Use multi-path atomic update with 3 retries
+    const updates = {};
+    updates[`/teams/${teamId}/players`] = newPlayers;
+    updates[`/teams/${teamId}/playerPrices`] = newPrices;
+    updates[`/teams/${teamId}/purse`] = newPurse;
+    let success = false;
+    for(let attempt=1; attempt<=3; attempt++){
+      try{
+        await db.ref('/').update(updates);
+        success = true;
+        break;
+      } catch(e){
+        console.error(`adminAddPlayer attempt ${attempt} failed:`, e);
+        if(attempt < 3) await new Promise(r=>setTimeout(r,1000));
+      }
+    }
+    if(!success){
+      toast('⚠️ Failed after 3 attempts. Check your internet and try again.','red');
+      return;
+    }
+  }
+  addConsoleLog('add',
+    `${flag(player)} ${player} manually added to ${teamName} by Admin`,
+    `Added at ₹${price.toFixed(2)} · ${playerMeta}${isForeign(player)?' · 🌍 Foreign':' · 🇮🇳 Domestic'} · Squad now: ${newSquadSize}/${MAX_SQUAD} · Foreign: ${newForeignCount}/${MAX_FOREIGN}`
+  );
+  toast(player+' added to '+teamName,'green');
+  if(playerSel) playerSel.value='';
+  if(priceInput) priceInput.value='';
+}
+
+// Remove from Squad Manager (opens the injured / re-auction modal)
+function adminRemovePlayer(teamId, playerName){
+  playerName = playerName.replace(/&apos;/g,"'");
+  openRemoveModal(teamId, playerName, 'squad');
+}
+
+async function adminAdjustWallet(teamId, action){
+  const input = document.getElementById('wadj-'+teamId);
+  const amount = parseFloat(input?.value);
+  if(isNaN(amount)||amount<0){toast('Enter a valid amount','red');return;}
+  const team = teamsData[teamId]||{};
+  const oldPurse = team.purse ?? TOTAL_PURSE;
+  const teamName = team.name||teamId;
+  let newPurse, actionLabel, logMsg, logDetails;
+  if(action==='add'){
+    newPurse = +(oldPurse+amount).toFixed(2);
+    actionLabel='Added'; logMsg=`💰 Wallet of ${teamName} increased by ₹${amount}`;
+    logDetails=`₹${oldPurse.toFixed(2)} → ₹${newPurse.toFixed(2)} (Admin added ₹${amount})`;
+  } else if(action==='sub'){
+    newPurse = +Math.max(0,oldPurse-amount).toFixed(2);
+    actionLabel='Deducted'; logMsg=`💰 Wallet of ${teamName} decreased by ₹${amount}`;
+    logDetails=`₹${oldPurse.toFixed(2)} → ₹${newPurse.toFixed(2)} (Admin deducted ₹${amount})`;
+  } else {
+    newPurse = +amount.toFixed(2);
+    actionLabel='Set'; logMsg=`💰 Wallet of ${teamName} manually set to ₹${newPurse.toFixed(2)}`;
+    logDetails=`Was ₹${oldPurse.toFixed(2)} → now ₹${newPurse.toFixed(2)} (Admin override)`;
+  }
+  if(DEMO()){
+    teamsData[teamId].purse = newPurse;
+    refreshAll();
+  } else {
+    await db.ref('/teams/'+teamId+'/purse').set(newPurse);
+  }
+  addConsoleLog('wallet', logMsg, logDetails);
+  if(input) input.value='';
+  toast(`${teamName} wallet → ₹${newPurse.toFixed(2)}`,'green');
+}
+
+
+
+// ═══════════════════════ TRADE SYSTEM ═══════════════════════
+let tradesData={}, tradeWindowOpen=false, auctionLive=false;
+let tradeSelectedMine=null, tradeSelectedTheirs=null;
+
+function setupTradeListener(){
+  if(DEMO()) return;
+  const tRef=db.ref('/trades');
+  const tOff=tRef.on('value',snap=>{ tradesData=snap.val()||{}; renderTradePanel(); updateAdminTradePanel(); renderTradeHistory(); });
+  listeners.push(()=>tRef.off('value',tOff));
+  const twRef=db.ref('/tradeWindow');
+  const twOff=twRef.on('value',snap=>{ tradeWindowOpen=snap.val()===true; renderTradePanel(); updateAdminTradePanel(); updateTradeTabLabel(); });
+  listeners.push(()=>twRef.off('value',twOff));
+
+  const alRef=db.ref('/auctionLive');
+  const alOff=alRef.on('value',snap=>{ auctionLive=snap.val()===true; updateLiveBanner(); updateAdminLiveToggle(); });
+  listeners.push(()=>alRef.off('value',alOff));
+}
+
+function updateTradeTabLabel(){
+  const btn=document.getElementById('trade-tab-btn'); if(!btn) return;
+  btn.innerHTML=tradeWindowOpen?'<span style="display:inline-block;width:7px;height:7px;background:#ff9f50;border-radius:50%;margin-right:5px;animation:pulse 1.5s infinite;"></span>🔄 TRADES':'🔄 TRADES';
+}
+
+async function adminToggleTrade(){
+  const newVal=!tradeWindowOpen;
+  if(DEMO()){ tradeWindowOpen=newVal; renderTradePanel(); updateAdminTradePanel(); updateTradeTabLabel(); }
+  else await db.ref('/tradeWindow').set(newVal);
+  addConsoleLog('system', newVal?'🔓 Trade Window OPENED by Admin':'🔒 Trade Window CLOSED by Admin', newVal?'Teams can now send trade proposals':'No new trades can be proposed until reopened');
+  toast(newVal?'Trade window OPENED':'Trade window CLOSED',newVal?'green':'red');
+}
+
+
+// ═══════════════════════ TRADE HISTORY PANEL ═══════════════════════
+function renderTradeHistory(){
+  const el=document.getElementById('panel-trade-history');
+  if(!el) return;
+
+  const all=Object.entries(tradesData)
+    .filter(([,t])=>t.status!=='pending')
+    .sort((a,b)=>(b[1].timestamp||0)-(a[1].timestamp||0));
+
+  let html=`<div class="category-header">
+    <div class="category-icon" style="background:rgba(255,159,80,.15);font-size:22px;">📜</div>
+    <div>
+      <div class="category-title" style="color:#ff9f50;">TRADE HISTORY</div>
+      <div class="category-desc">${all.length} trade${all.length!==1?'s':''} · Visible to everyone · Read only</div>
+    </div>
+  </div>`;
+
+  if(!all.length){
+    html+=`<div style="text-align:center;padding:48px;color:var(--muted);"><div style="font-size:44px;margin-bottom:10px;">🔄</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;">NO TRADE HISTORY YET</div></div>`;
+    el.innerHTML=html; return;
+  }
+
+  all.forEach(([,t])=>{
+    const fn=teamsData[t.from]?.name||t.from.toUpperCase();
+    const tn=teamsData[t.to]?.name||t.to.toUpperCase();
+    const isSuccess=t.status==='accepted';
+    const statusColor=isSuccess?'var(--green)':'var(--red)';
+    const statusBg=isSuccess?'rgba(50,220,150,.1)':'rgba(255,68,68,.1)';
+    const statusBorder=isSuccess?'rgba(50,220,150,.3)':'rgba(255,68,68,.25)';
+    const statusLabel=isSuccess?'✅ COMPLETED':t.status==='rejected'?'❌ DECLINED':'❌ CANCELLED';
+
+    html+=`<div style="background:var(--card-bg);border:1px solid ${isSuccess?'rgba(50,220,150,.2)':'rgba(255,68,68,.15)'};border-radius:14px;padding:16px 18px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);">${fn}</span>
+          <span style="font-size:11px;color:var(--muted);">proposed to</span>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);">${tn}</span>
+        </div>
+        <span style="background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:1px;">${statusLabel}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="background:var(--surface);border:1px solid rgba(255,159,80,.25);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">${fn} OFFERED</div>
+          <div style="font-size:13px;font-weight:700;color:#ff9f50;">${flag(t.offerPlayer)} ${t.offerPlayer}</div>
+        </div>
+        <div style="font-size:20px;color:var(--muted);">⇄</div>
+        <div style="background:var(--surface);border:1px solid rgba(255,159,80,.25);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">${tn} OFFERED</div>
+          <div style="font-size:13px;font-weight:700;color:#ff9f50;">${flag(t.wantPlayer)} ${t.wantPlayer}</div>
+        </div>
+        ${isSuccess?`<div style="margin-left:auto;font-size:11px;color:var(--green);letter-spacing:1px;">Players swapped ✓</div>`:''}
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML=html;
+}
+
+function updateAdminTradePanel(){
+  const label=document.getElementById('trade-window-status-label');
+  const btn=document.getElementById('trade-toggle-btn');
+  if(!label||!btn) return;
+  if(tradeWindowOpen){ label.textContent='OPEN'; label.style.color='var(--green)'; btn.textContent='🔒 CLOSE TRADE WINDOW'; btn.className='admin-btn btn-red'; }
+  else { label.textContent='CLOSED'; label.style.color='var(--red)'; btn.textContent='🔓 OPEN TRADE WINDOW'; btn.className='admin-btn btn-orange'; }
+  const el=document.getElementById('admin-pending-trades'); if(!el) return;
+
+  const all=Object.entries(tradesData).sort((a,b)=>(b[1].timestamp||0)-(a[1].timestamp||0));
+  const pending=all.filter(([,t])=>t.status==='pending');
+
+  // Show only LIVE/PENDING trades
+  if(!pending.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);letter-spacing:1px;padding:10px 0;text-align:center;">🟢 No active trades right now.</div>';
+    return;
+  }
+
+  let html=`<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:#ff9f50;margin-bottom:10px;">⏳ LIVE TRADES — ${pending.length} ACTIVE</div>`;
+  pending.forEach(([,t])=>{
+    const fn=teamsData[t.from]?.name||t.from.toUpperCase();
+    const tn=teamsData[t.to]?.name||t.to.toUpperCase();
+    html+=`<div style="background:rgba(255,159,80,.08);border:1px solid rgba(255,159,80,.35);border-radius:12px;padding:16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="text-align:center;min-width:100px;">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">FROM</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);">${fn}</div>
+          <div style="background:rgba(255,159,80,.15);border:1px solid rgba(255,159,80,.4);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#ff9f50;margin-top:5px;">${flag(t.offerPlayer)} ${t.offerPlayer}</div>
+        </div>
+        <div style="font-size:24px;color:#ff9f50;flex-shrink:0;">⇄</div>
+        <div style="text-align:center;min-width:100px;">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">TO</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);">${tn}</div>
+          <div style="background:rgba(255,159,80,.15);border:1px solid rgba(255,159,80,.4);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#ff9f50;margin-top:5px;">${flag(t.wantPlayer)} ${t.wantPlayer}</div>
+        </div>
+        <div style="margin-left:auto;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:right;">⏳ Awaiting<br><strong style="color:var(--text);">${tn}</strong></div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+function renderTradePanel(){
+  const el=document.getElementById('trade-content'); if(!el) return;
+  if(isAdmin){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);"><div style="font-size:40px;margin-bottom:10px;">&#128260;</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;">Manage trade window from Admin Control Room above.</div></div>'; return; }
+  if(!tradeWindowOpen){ el.innerHTML='<div id="trade-closed-banner"><div style="font-size:44px;margin-bottom:10px;">&#128274;</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:32px;letter-spacing:3px;color:var(--red);">TRADE WINDOW CLOSED</div><div style="font-size:13px;color:var(--muted);margin-top:8px;letter-spacing:1px;">The admin has not opened the trade window yet.</div></div>'; return; }
+
+  const myTeam=teamsData[currentUser]||{};
+  const myPlayers=myTeam.players||[];
+  const otherTeams=Object.entries(teamsData).filter(([id])=>id!==currentUser);
+  const incomingTrades=Object.entries(tradesData).filter(([,t])=>t.to===currentUser&&t.status==='pending');
+  const outgoing=Object.entries(tradesData).find(([,t])=>t.from===currentUser&&t.status==='pending');
+
+  let html=`<div id="trade-open-banner"><div><span class="trade-status-dot"></span><span style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:#ff9f50;">TRADE WINDOW OPEN</span></div><div style="font-size:12px;color:var(--muted);">Send or accept 1-for-1 player trades</div></div>`;
+
+  // Incoming
+  incomingTrades.forEach(([tid,t])=>{
+    const fromName=teamsData[t.from]?.name||t.from;
+    html+=`<div class="trade-request-card"><div class="trade-request-title">&#128233; INCOMING TRADE REQUEST</div><div style="font-size:13px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;">FROM: <strong style="color:var(--text)">${fromName}</strong></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;"><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">THEY OFFER</div><span class="trade-player-tag" style="border-color:#ff9f50;color:#ff9f50;">${flag(t.offerPlayer)} ${t.offerPlayer}</span></div><div style="font-size:24px;color:#ff9f50;">&#8644;</div><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">THEY WANT</div><span class="trade-player-tag" style="border-color:var(--gold);color:var(--gold);">${flag(t.wantPlayer)} ${t.wantPlayer}</span></div></div><button class="trade-btn btn-green" onclick="respondTrade('${tid}','accepted')">&#10003; ACCEPT TRADE</button> <button class="trade-btn btn-red" onclick="respondTrade('${tid}','rejected')">&#10007; DECLINE</button></div>`;
+  });
+
+  // Outgoing pending
+  if(outgoing){
+    const [tid,t]=outgoing, toName=teamsData[t.to]?.name||t.to;
+    html+=`<div style="background:rgba(255,159,80,.07);border:1px solid rgba(255,159,80,.3);border-radius:12px;padding:18px;margin-bottom:14px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:#ff9f50;margin-bottom:10px;">&#9203; AWAITING RESPONSE</div><div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Waiting for <strong style="color:var(--text)">${toName}</strong>...</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">YOU OFFER</div><span class="trade-player-tag">${flag(t.offerPlayer)} ${t.offerPlayer}</span></div><div style="font-size:22px;color:#ff9f50">&#8644;</div><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">YOU WANT</div><span class="trade-player-tag">${flag(t.wantPlayer)} ${t.wantPlayer}</span></div></div><button class="trade-btn btn-red" onclick="cancelTrade('${tid}')">&#128465; CANCEL PROPOSAL</button></div>`;
+  }
+
+  // New proposal form
+  if(!outgoing){
+    html+=`<div class="trade-card"><div class="trade-card-title">&#128228; PROPOSE A TRADE</div>`;
+    if(!myPlayers.length){ html+=`<div style="color:var(--muted);font-size:13px;">You have no players to trade yet.</div>`; }
+    else {
+      html+=`<div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">SELECT TEAM TO TRADE WITH</div><select class="trade-select" id="trade-target-team" onchange="renderTradePlayerLists()"><option value="">— Choose team —</option>`;
+      otherTeams.forEach(([id,t])=>{ html+=`<option value="${id}">${t.name||id.toUpperCase()}</option>`; });
+      html+=`</select><div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;margin-top:10px;"><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:7px;">YOUR PLAYER (offer)</div><div class="trade-player-list" id="my-trade-players">${myPlayers.map(p=>`<div class="trade-player-opt" onclick="selectTradePlayer('mine','${p.replace(/'/g,"&apos;")}',this)"><span>${flag(p)}</span><span class="pname">${p}</span>${isForeign(p)?'<span class="foreign-badge">INT</span>':''}</div>`).join('')}</div></div><div class="trade-arrow">&#8644;</div><div><div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:7px;">THEIR PLAYER (want)</div><div class="trade-player-list" id="their-trade-players"><div style="color:var(--muted);font-size:12px;padding:8px;">Select a team first</div></div></div></div><div style="margin-top:14px;background:var(--surface);border-radius:8px;padding:12px;min-height:44px;" id="trade-summary"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;">No players selected yet</div></div><button class="trade-btn btn-orange" onclick="sendTradeProposal()" style="margin-top:10px;">&#128228; SEND TRADE PROPOSAL</button>`;
+    }
+    html+=`</div>`;
+  }
+
+  // Trade history moved to 📜 TRADE HISTORY tab
+  el.innerHTML=html;
+  tradeSelectedMine=null; tradeSelectedTheirs=null;
+}
+
+function selectTradePlayer(side,player,el){
+  player=player.replace(/&apos;/g,"'");
+  const listId=side==='mine'?'my-trade-players':'their-trade-players';
+  document.querySelectorAll('#'+listId+' .trade-player-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  if(side==='mine') tradeSelectedMine=player; else tradeSelectedTheirs=player;
+  updateTradeSummary();
+}
+
+function updateTradeSummary(){
+  const el=document.getElementById('trade-summary'); if(!el) return;
+  if(!tradeSelectedMine&&!tradeSelectedTheirs){ el.innerHTML='<div style="font-size:11px;color:var(--muted);letter-spacing:1px;">No players selected yet</div>'; return; }
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div><span style="font-size:10px;letter-spacing:2px;color:var(--muted);">YOU GIVE</span><br><span style="font-weight:700;color:#ff9f50">${tradeSelectedMine?flag(tradeSelectedMine)+' '+tradeSelectedMine:'— not selected —'}</span></div><div style="font-size:20px;color:#ff9f50">&#8644;</div><div><span style="font-size:10px;letter-spacing:2px;color:var(--muted);">YOU GET</span><br><span style="font-weight:700;color:#ff9f50">${tradeSelectedTheirs?flag(tradeSelectedTheirs)+' '+tradeSelectedTheirs:'— not selected —'}</span></div></div>`;
+}
+
+function renderTradePlayerLists(){
+  const targetId=document.getElementById('trade-target-team')?.value;
+  const listEl=document.getElementById('their-trade-players'); if(!listEl) return;
+  if(!targetId){ listEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px;">Select a team first</div>'; return; }
+  const theirPlayers=teamsData[targetId]?.players||[];
+  if(!theirPlayers.length){ listEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px;">This team has no players</div>'; return; }
+  listEl.innerHTML=theirPlayers.map(p=>`<div class="trade-player-opt" onclick="selectTradePlayer('theirs','${p.replace(/'/g,"&apos;")}',this)"><span>${flag(p)}</span><span class="pname">${p}</span>${isForeign(p)?'<span class="foreign-badge">INT</span>':''}</div>`).join('');
+  tradeSelectedTheirs=null; updateTradeSummary();
+}
+
+async function sendTradeProposal(){
+  if(seasonEnded||auctionState.seasonEnded){toast('🏁 Season has ended — read-only mode','red');return;}
+  if(!tradeSelectedMine){toast('Select your player to offer','red');return;}
+  if(!tradeSelectedTheirs){toast('Select the player you want','red');return;}
+  const targetId=document.getElementById('trade-target-team')?.value;
+  if(!targetId){toast('Select a team','red');return;}
+  const myTeam=teamsData[currentUser]||{}, theirTeam=teamsData[targetId]||{};
+  const myForeign=(myTeam.players||[]).filter(p=>isForeign(p)).length;
+  const theirForeign=(theirTeam.players||[]).filter(p=>isForeign(p)).length;
+  const givingForeign=isForeign(tradeSelectedMine)?1:0, gettingForeign=isForeign(tradeSelectedTheirs)?1:0;
+  if(myForeign-givingForeign+gettingForeign>MAX_FOREIGN){toast('Trade would exceed your foreign limit!','red');return;}
+  if(theirForeign-gettingForeign+givingForeign>MAX_FOREIGN){toast('Trade would exceed their foreign limit!','red');return;}
+  const trade={from:currentUser,to:targetId,offerPlayer:tradeSelectedMine,wantPlayer:tradeSelectedTheirs,status:'pending',timestamp:Date.now()};
+  const tradeId='trade_'+Date.now();
+  if(DEMO()){ tradesData[tradeId]=trade; renderTradePanel(); updateAdminTradePanel(); }
+  else await db.ref('/trades/'+tradeId).set(trade);
+  toast('Trade proposal sent!','green');
+}
+
+async function respondTrade(tradeId,response){
+  const t=tradesData[tradeId]; if(!t||t.status!=='pending') return;
+  if(response==='accepted'){
+    if(!teamsData[t.from]||!teamsData[t.to]){ toast('One of the teams no longer exists','red'); return; }
+    const fromTeam={...teamsData[t.from]}, toTeam={...teamsData[t.to]};
+    fromTeam.players=(fromTeam.players||[]).filter(p=>p!==t.offerPlayer); fromTeam.players.push(t.wantPlayer);
+    toTeam.players=(toTeam.players||[]).filter(p=>p!==t.wantPlayer); toTeam.players.push(t.offerPlayer);
+    const fp={...(fromTeam.playerPrices||{})}, tp={...(toTeam.playerPrices||{})};
+    const fPrice=getPriceFromPrices(fp,t.offerPlayer), tPrice=getPriceFromPrices(tp,t.wantPlayer);
+    delete fp[t.offerPlayer]; delete tp[t.wantPlayer];
+    delete fp[fbKey(t.offerPlayer)]; delete tp[fbKey(t.wantPlayer)];
+    if(tPrice) fp[fbKey(t.wantPlayer)]=tPrice; if(fPrice) tp[fbKey(t.offerPlayer)]=fPrice;
+    fromTeam.playerPrices=fp; toTeam.playerPrices=tp;
+
+    // Update soldLog so traded players appear in Sold tab under correct team
+    // and disappear from admin announce dropdown
+    const existingLog = auctionState.soldLog||[];
+    // Remove old entries for both traded players, then add updated ones
+    const filteredLog = existingLog.filter(e=>e.player!==t.offerPlayer && e.player!==t.wantPlayer);
+    const newLog = [
+      ...filteredLog,
+      {player:t.offerPlayer, team:t.to,   price:fPrice||'0.00', sold:true, traded:true},
+      {player:t.wantPlayer,  team:t.from, price:tPrice||'0.00', sold:true, traded:true}
+    ];
+
+    if(DEMO()){
+      teamsData[t.from]=fromTeam; teamsData[t.to]=toTeam;
+      tradesData[tradeId]={...t,status:'accepted'};
+      auctionState={...auctionState, soldLog:newLog};
+      renderTradePanel(); renderTeamsOverview(); renderMyTeam(); updateAdminTradePanel();
+    } else {
+      // Single atomic update — all or nothing
+      const tradeUpdates = {};
+      tradeUpdates[`/teams/${t.from}/players`] = fromTeam.players;
+      tradeUpdates[`/teams/${t.from}/playerPrices`] = fromTeam.playerPrices;
+      tradeUpdates[`/teams/${t.to}/players`] = toTeam.players;
+      tradeUpdates[`/teams/${t.to}/playerPrices`] = toTeam.playerPrices;
+      tradeUpdates[`/trades/${tradeId}/status`] = 'accepted';
+      tradeUpdates['/auction/soldLog'] = newLog;
+      try{
+        await db.ref('/').update(tradeUpdates);
+      } catch(e){
+        toast('⚠️ Trade failed — network error. Try again.','red');
+        console.error('Trade update failed:', e);
+        return;
+      }
+    }
+    // Flash overlay
+    document.querySelector('.sold-overlay-label').textContent='TRADED!';
+    document.getElementById('so-player').innerHTML=flag(t.offerPlayer)+' '+t.offerPlayer+' &#8644; '+flag(t.wantPlayer)+' '+t.wantPlayer;
+    document.getElementById('so-team').textContent='TRADE COMPLETE';
+    document.getElementById('so-price').textContent='';
+    document.getElementById('sold-overlay').classList.add('show');
+    setTimeout(()=>{ document.getElementById('sold-overlay').classList.remove('show'); document.querySelector('.sold-overlay-label').textContent='SOLD!'; },3000);
+    addConsoleLog('trade',`Trade completed: ${teamsData[t.from]?.name||t.from} gave ${t.offerPlayer} for ${t.wantPlayer} from ${teamsData[t.to]?.name||t.to}`,'Mutual agreement trade');
+    toast('Trade completed!','green');
+  } else {
+    if(DEMO()){ tradesData[tradeId]={...t,status:'rejected'}; renderTradePanel(); updateAdminTradePanel(); }
+    else await db.ref('/trades/'+tradeId+'/status').set('rejected');
+    toast('Trade declined.','red');
+  }
+}
+
+async function cancelTrade(tradeId){
+  if(DEMO()){ if(tradesData[tradeId]) tradesData[tradeId].status='cancelled'; renderTradePanel(); updateAdminTradePanel(); }
+  else await db.ref('/trades/'+tradeId+'/status').set('cancelled');
+  toast('Trade proposal cancelled.','red');
+}
+</script>
+</body>
+</html>
